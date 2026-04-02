@@ -1,0 +1,19 @@
+{
+    "WWW_DIR": "www",
+    "DATA_DIR": "data",
+    "BACKUP_DIR": "backups",
+    "VHOST_SUFFIX": ".test",
+    "PHP_VERSION": "",
+    "APACHE_VERSION": "",
+    "MYSQL_VERSION": "",
+    "HTTP_PORT": 80,
+    "HTTPS_PORT": 443,
+    "MYSQL_PORT": 3306,
+    "APP_PORT": 9090,
+    "START_ON_WINDOWS": false,
+    "START_MINIMIZED": false,
+    "AUTO_START_SERVICES": false,
+    "LANGUAGE": "en",
+    "BROWSER_MODE": "system",
+    "BROWSER_PATH": ""
+}

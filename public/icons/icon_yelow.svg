@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg width="185" height="185" viewBox="0 0 185 185" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient_1" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="158.984" y2="158.984">
+      <stop offset="0" stop-color="#E5C846" />
+      <stop offset="1" stop-color="#D47706" />
+    </linearGradient>
+  </defs>
+  <g>
+    <path d="M0 79.4922C0 35.5899 35.5899 0 79.4922 0C123.395 0 158.984 35.5899 158.984 79.4922C158.984 123.395 123.395 158.984 79.4922 158.984C35.5899 158.984 0 123.395 0 79.4922Z" fill="url(#gradient_1)" fill-rule="evenodd" transform="translate(13.008 13.008)" />
+    <path d="M28.9063 0L0 57.8125L21.6797 57.8125L10.8398 101.172L43.3594 39.7461L21.6797 39.7461L28.9063 0Z" fill="#FFFFFF" transform="translate(72.266 43.359)" />
+    <path d="M0 50.5859C0 22.6481 22.6481 0 50.5859 0C78.5238 0 101.172 22.6481 101.172 50.5859C101.172 78.5238 78.5238 101.172 50.5859 101.172C22.6481 101.172 0 78.5238 0 50.5859Z" fill="none" stroke-width="6" stroke="#FFFFFF" stroke-opacity="0.3" transform="translate(41.914 41.914)" />
+    <path d="M0 3.61328C0 1.61772 1.61772 0 3.61328 0C5.60884 0 7.22656 1.61772 7.22656 3.61328C7.22656 5.60884 5.60884 7.22656 3.61328 7.22656C1.61772 7.22656 0 5.60884 0 3.61328Z" fill="#FFFFFF" fill-rule="evenodd" transform="translate(88.887 88.887)" />
+  </g>
+</svg>

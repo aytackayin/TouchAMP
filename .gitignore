@@ -1,0 +1,55 @@
+# Git ignore for TouchAMP
+# Node.js dependencies
+node_modules/
+
+# Build outputs (if any)
+dist/
+build/
+
+# Logs and Temporary files (anywhere)
+*log
+logs/
+temp/
+tmp/
+*.tmp
+*.pdb
+*.lib
+*.exp
+*.obj
+*.ilk
+*.bak
+
+# Recursive patterns to ensure sub-program files are also ignored
+**/logs/
+**/temp/
+**/tmp/
+**/*.log
+**/*.tmp
+**/*.pdb
+**/*.lib
+**/*.exp
+**/*.obj
+**/*.ilk
+**/*.bak
+
+# IDE / Editor files
+.vscode/
+.agent/
+.idea/
+*.swp
+*.swo
+Thumbs.db
+
+# TouchAMP Services & Data & Backups (To keep repo size small)
+bin/versions/
+data/
+backups/
+mysql_exports/
+etc/logs/
+etc/vhosts/generated/
+etc/ssl/generated/
+
+# Configuration and session data (optional, but keep settings.json to save defaults)
+# settings.json
+# quick_access.json
+# cron.json

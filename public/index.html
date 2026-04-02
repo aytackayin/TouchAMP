@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="app_title">TouchAMP — Local Development Environment</title>
+    <meta name="description"
+        content="TouchAMP Local server management panel - manage Apache, MySQL, Virtual Hosts and SSL"
+        data-i18n-attr="content|app_description">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="icons/icon.svg">
+    <script src="lib/lucide.min.js"></script>
+    <style>
+        body {
+            opacity: 0;
+            transition: opacity 0.1s;
+        }
+
+        body.i18n-ready {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Mobile Header -->
+    <header class="mobile-header">
+        <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleSidebar()">
+            <i data-lucide="menu" style="width: 24px; height: 24px;"></i>
+        </button>
+        <div class="mobile-logo">
+            <img src="icons/logo.svg" alt="TouchAMP" style="height: 28px; width: auto;">
+        </div>
+        <div style="width: 40px;"></div>
+    </header>
+
+    <!-- Mobile Overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <!-- ═══ GLOBAL LOADER ═══ -->
+    <div class="loading-overlay" id="global-loader">
+        <div class="spinner"></div>
+        <div class="loader-text" data-i18n="loader_text">Processing, Please Wait...</div>
+    </div>
+
+    <div class="app-container">
+        <!-- ═══ SIDEBAR ═══ -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <img src="icons/logo.svg" alt="TouchAMP Logo" style="height: 40px; width: auto; display: block;"
+                        data-i18n-attr="alt|logo_alt">
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-item active" data-section="dashboard">
+                        <i data-lucide="layout-dashboard" class="nav-item-icon"></i>
+                        <span data-i18n="nav_dashboard">Dashboard</span>
+                    </div>
+                    <div class="nav-item" data-section="projects">
+                        <i data-lucide="folder" class="nav-item-icon"></i>
+                        <span data-i18n="nav_projects">Projects & Virtual Hosts</span>
+                    </div>
+                    <div class="nav-item" data-section="database">
+                        <i data-lucide="database" class="nav-item-icon"></i>
+                        <span data-i18n="nav_database">Database Operations</span>
+                    </div>
+                    <div class="nav-item" data-section="backups">
+                        <i data-lucide="package" class="nav-item-icon"></i>
+                        <span data-i18n="nav_backups">Backup List</span>
+                    </div>
+                    <div class="nav-item" data-section="settings">
+                        <i data-lucide="settings" class="nav-item-icon"></i>
+                        <span data-i18n="nav_settings">Settings</span>
+                    </div>
+                </div>
+
+                <div class="nav-section" id="quick-access-section" style="display: none;">
+                    <div class="nav-section-title" data-i18n="quick_access_title">Quick Access</div>
+                    <div class="nav-item" id="quick-link-localhost" onclick="openUrlInBrowser('http://localhost')"
+                        style="display: none;">
+                        <i data-lucide="home" class="nav-item-icon"></i>
+                        <span>localhost</span>
+                    </div>
+                    <div class="nav-item" id="quick-link-phpmyadmin"
+                        onclick="openUrlInBrowser('http://localhost/phpmyadmin')" style="display: none;">
+                        <i data-lucide="database-zap" class="nav-item-icon"></i>
+                        <span>phpMyAdmin</span>
+                    </div>
+                    <div id="quick-access-custom-items"></div>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="quick-actions">
+                    <button class="quick-action-btn start-all" onclick="startAll(this)" id="btn-start-all">
+                        <i data-lucide="play" style="width: 14px; height: 14px; margin-right: 4px;"></i> <span
+                            data-i18n="start_all">Start All</span>
+                    </button>
+                    <button class="quick-action-btn stop-all" onclick="stopAll(this)" id="btn-stop-all">
+                        <i data-lucide="square" style="width: 14px; height: 14px; margin-right: 4px;"></i> <span
+                            data-i18n="stop_all">Stop All</span>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ═══ MAIN CONTENT ═══ -->
+        <main class="main-content">
+
+            <!-- ─── DASHBOARD ─── -->
+            <div id="section-dashboard" class="section active">
+                <div class="page-header">
+                    <h1 class="page-title" data-i18n="dash_title">Dashboard</h1>
+                    <p class="page-subtitle" data-i18n="dash_subtitle">Manage your services here</p>
+                </div>
+
+                <div class="card" style="margin-bottom: 24px;">
+                    <div class="card-header" style="margin-bottom: 0;">
+                        <div class="card-title"><i data-lucide="folder-open"
+                                style="width: 18px; height: 18px; margin-right: 8px; color: var(--accent-blue-light);"></i>
+                            <span data-i18n="www_folder">WWW Folder:</span> <span id="www-dir-display"
+                                style="color: var(--accent-blue-light); margin-left: 8px; font-family: 'JetBrains Mono', monospace; font-size: 14px;">Loading...</span>
+                        </div>
+                    </div>
+                    <p style="font-size: 13px; color: var(--text-muted); margin-top: 8px;">
+                        <span data-i18n="www_desc">All subfolders added here will automatically have a .test virtual
+                            host and an SSL certificate for https://.</span>
+                    </p>
+                </div>
+
+                <div class="services-grid">
+                    <!-- Apache Card -->
+                    <div class="service-card" id="service-apache">
+                        <div class="service-header">
+                            <div class="service-info">
+                                <div class="service-icon apache"><i data-lucide="server"></i></div>
+                                <div>
+                                    <div class="service-name">Apache</div>
+                                    <div class="service-version"><span id="apache-version-display">httpd ...</span>
+                                        <span style="margin: 0 4px; opacity: 0.5;">|</span> <span
+                                            id="php-version-display"
+                                            style="color: var(--accent-blue-light); font-weight: bold;">PHP ...</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="status-badge stopped">
+                                <span class="status-dot"></span>
+                                <span data-i18n="checking">Checking...</span>
+                            </div>
+                        </div>
+
+                        <div class="service-details">
+                            <div class="detail-item">
+                                <div class="detail-label" data-i18n="http_port">HTTP Port</div>
+                                <div class="detail-value port-value">80</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label" data-i18n="https_port">HTTPS Port (SSL)</div>
+                                <div class="detail-value port-value-https">443</div>
+                            </div>
+                        </div>
+
+                        <div class="service-actions">
+                            <button class="btn btn-start" onclick="startService('apache', this)">
+                                <i data-lucide="play" style="width: 14px; height: 14px; margin-right: 4px;"></i> <span
+                                    data-i18n="start">Start</span>
+                            </button>
+                            <button class="btn btn-stop" onclick="stopService('apache', this)" disabled>
+                                <i data-lucide="square" style="width: 14px; height: 14px; margin-right: 4px;"></i> <span
+                                    data-i18n="stop">Stop</span>
+                            </button>
+                            <button class="btn btn-restart" onclick="restartService('apache', this)" disabled>
+                                <i data-lucide="rotate-cw" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                                <span data-i18n="restart">Restart</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- MySQL Card -->
+                    <div class="service-card" id="service-mysql">
+                        <div class="service-header">
+                            <div class="service-info">
+                                <div class="service-icon mysql"><i data-lucide="database"></i></div>
+                                <div>
+                                    <div class="service-name">MySQL</div>
+                                    <div class="service-version" id="mysql-version-display">mysql ...</div>
+                                </div>
+                            </div>
+                            <div class="status-badge stopped">
+                                <span class="status-dot"></span>
+                                <span data-i18n="checking">Checking...</span>
+                            </div>
+                        </div>
+
+                        <div class="service-details">
+                            <div class="detail-item">
+                                <div class="detail-label">Port</div>
+                                <div class="detail-value port-value">3306</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label" data-i18n="db_user">User</div>
+                                <div class="detail-value">root</div>
+                            </div>
+                        </div>
+
+                        <div class="service-actions">
+                            <button class="btn btn-start" onclick="startService('mysql', this)">
+                                <i data-lucide="play" style="width: 14px; height: 14px; margin-right: 4px;"></i> <span
+                                    data-i18n="start">Start</span>
+                            </button>
+                            <button class="btn btn-stop" onclick="stopService('mysql', this)" disabled>
+                                <i data-lucide="square" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                                <span data-i18n="stop">Stop</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ─── PROJECTS & VHOSTS ─── -->
+            <div id="section-projects" class="section">
+                <div class="page-header">
+                    <h1 class="page-title" data-i18n="projects_title">Projects & Virtual Hosts</h1>
+                    <p class="page-subtitle" data-i18n="projects_subtitle">Automatic virtual hosts and SSL certificates
+                        for projects in the www directory</p>
+                </div>
+
+                <div class="vhosts-header">
+                    <div style="font-size: 13px; color: var(--text-secondary);">
+                        <span style="color: var(--accent-emerald);">●</span> <span data-i18n="auto_sync">Automatically
+                            synced every 5 seconds.</span>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-secondary" onclick="openCloneModal()" id="btn-repo-clone">
+                            <i data-lucide="git-branch" style="width: 16px; height: 16px; margin-right: 6px;"></i> <span
+                                data-i18n="btn_repo_clone">Repo Clone</span>
+                        </button>
+                        <button class="btn btn-primary" onclick="syncNow()">
+                            <i data-lucide="refresh-cw" style="width: 16px; height: 16px; margin-right: 6px;"></i> <span
+                                data-i18n="sync_now">Sync Now</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="vhosts-list" id="projects-grid">
+                    <div style="color: var(--text-muted); font-size: 14px;" data-i18n="loading">Loading...</div>
+                </div>
+            </div>
+
+            <!-- ─── BACKUPS ─── -->
+            <div id="section-backups" class="section">
+                <div class="page-header">
+                    <h1 class="page-title" data-i18n="backups_title">Backup List</h1>
+                    <p class="page-subtitle" data-i18n="backups_subtitle">All ZIP archives and database backups taken in
+                        the system</p>
+                </div>
+                <!-- Vhost-list instead of projects-grid for backup style -->
+                <div class="vhosts-list" id="backups-grid">
+                    <div style="color: var(--text-muted); font-size: 14px;" data-i18n="searching_archives">Searching
+                        archives...</div>
+                </div>
+            </div>
+
+            <!-- ─── SETTINGS ─── -->
+            <div id="section-settings" class="section">
+                <div class="page-header">
+                    <h1 class="page-title" data-i18n="settings_title">Settings</h1>
+                    <p class="page-subtitle" data-i18n="settings_subtitle">Customize system folders and port settings
+                        here</p>
+                </div>
+
+                <div class="card">
+                    <form id="settings-form">
+                        <div class="settings-tabs">
+                            <div class="settings-tab active" data-tab="general" onclick="switchSettingsTab('general')"
+                                data-i18n="tab_general">General</div>
+                            <div class="settings-tab" data-tab="services" onclick="switchSettingsTab('services')"
+                                data-i18n="tab_services">Services</div>
+                            <div class="settings-tab" data-tab="cron" onclick="switchSettingsTab('cron')"
+                                data-i18n="tab_cron">Scheduled Tasks</div>
+                            <div class="settings-tab" data-tab="quick-access" onclick="switchSettingsTab('quick-access')"
+                                data-i18n="tab_quick_access">Quick Access</div>
+                        </div>
+
+                        <!-- ═══ TAB: GENERAL ═══ -->
+                        <div id="settings-tab-general" class="settings-tab-content active">
+                            <div class="settings-section-title" style="margin-left:0; margin-bottom:16px;"
+                                data-i18n="app_behavior">Application Behavior</div>
+                            <div class="settings-grid-row"
+                                style="margin-bottom: 24px; gap: 20px; grid-template-columns: 1fr;">
+                                <label class="form-checkbox">
+                                    <input type="checkbox" id="setting-startOnWindows" class="table-cb">
+                                    <span data-i18n="start_on_win">Start with Windows</span>
+                                </label>
+                                <label class="form-checkbox">
+                                    <input type="checkbox" id="setting-startMinimized" class="table-cb">
+                                    <span data-i18n="start_minimized">Start minimized</span>
+                                </label>
+                                <label class="form-checkbox">
+                                    <input type="checkbox" id="setting-autoStartServices" class="table-cb">
+                                    <span data-i18n="auto_start_services">Start services automatically</span>
+                                </label>
+                            </div>
+
+                            <div class="settings-grid-row">
+                                <div class="form-group">
+                                    <label class="form-label" data-i18n="settings_language_label">Language</label>
+                                    <select class="form-input" id="setting-language">
+                                        <!-- Populated from API -->
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="settings-section-title"
+                                style="margin-left:0; margin-top:24px; margin-bottom:16px;"
+                                data-i18n="browser_settings">Browser Settings</div>
+                            <div class="settings-grid-row" style="align-items: flex-end;">
+                                <div class="form-group" style="flex: 1; min-width: 180px;">
+                                    <label class="form-label" data-i18n="browser_mode_label">Browser Selection</label>
+                                    <select class="form-input" id="setting-browserMode" onchange="toggleBrowserPath()">
+                                        <option value="system" data-i18n="default_browser">Default Browser</option>
+                                        <option value="electron" data-i18n="electron_internal">Electron (Internal)
+                                        </option>
+                                        <option value="path" data-i18n="custom_path">Custom Path (Executable)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="browser-path-group" style="flex: 2; display: none;">
+                                    <label class="form-label" data-i18n="browser_path_label">Browser Path</label>
+                                    <input type="text" class="form-input" id="setting-browserPath"
+                                        placeholder="C:\Program Files\Google\Chrome\Application\chrome.exe"
+                                        data-i18n-attr="placeholder|placeholder_browser_path">
+                                </div>
+                            </div>
+
+                            <div class="settings-section-title"
+                                style="margin-left:0; margin-top:24px; margin-bottom:16px;" data-i18n="vhost_config">
+                                Host Configuration</div>
+                            <div class="settings-grid-row">
+                                <div class="form-group">
+                                    <label class="form-label" data-i18n="vhost_suffix">Virtual Host Suffix</label>
+                                    <input type="text" class="form-input" id="setting-vhostSuffix" placeholder=".test"
+                                        data-i18n-attr="placeholder|placeholder_vhost_suffix"
+                                        style="width: 100%;">
+                                    <small class="form-hint" data-i18n="vhost_hint">E.g. .test, .local, .dev</small>
+                                </div>
+                            </div>
+
+                            <div class="settings-section-title"
+                                style="margin-left:0; margin-top:24px; margin-bottom:8px;" data-i18n="folder_config">
+                                Folder Configuration</div>
+                            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+                                <i data-lucide="info" style="width:12px; height:12px; margin-right:4px; vertical-align: middle;"></i>
+                                <span data-i18n="app_var_hint">You can use <b>{APP}</b> variable for the application directory (e.g. {APP}\www)</span>
+                            </p>
+                            <div class="settings-grid-row">
+                                <div class="form-group">
+                                    <label class="form-label" data-i18n="www_folder_label">WWW Folder (Document
+                                        Root)</label>
+                                    <input type="text" class="form-input" id="setting-wwwDir"
+                                        placeholder="C:\Path\Projects" data-i18n-attr="placeholder|placeholder_www_dir">
+                                    <small class="form-hint" data-i18n="www_hint">The main folder containing your
+                                        projects</small>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" data-i18n="data_folder">Data Folder (MySQL Data)</label>
+                                    <input type="text" class="form-input" id="setting-dataDir"
+                                        placeholder="C:\Path\Data" data-i18n-attr="placeholder|placeholder_data_dir">
+                                    <small class="form-hint" data-i18n="data_hint">Location where database files will be
+                                        stored</small>
+                                </div>
+                            </div>
+                            <div class="settings-grid-row">
+                                <div class="form-group">
+                                    <label class="form-label" data-i18n="backup_folder">Backup Folder (Backup)</label>
+                                    <input type="text" class="form-input" id="setting-backupDir"
+                                        placeholder="C:\Path\Backups" data-i18n-attr="placeholder|placeholder_backup_dir">
+                                    <small class="form-hint" data-i18n="backup_hint">Folder where project and DB ZIPs
+                                        will
+                                        be stored</small>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" data-i18n="app_port">Application Port (Panel)</label>
+                                    <input type="number" class="form-input" id="setting-appPort">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ═══ TAB: SERVICES ═══ -->
+                        <div id="settings-tab-services" class="settings-tab-content">
+                            <div class="settings-section-title" style="margin-left:0; margin-bottom:16px;">
+                                <span data-i18n="version_mgmt">Version Management</span>
+                                <button type="button" class="btn btn-secondary btn-sm"
+                                    style="margin-left:12px; padding: 2px 8px; font-size:10px;"
+                                    onclick="openVersionModal()">
+                                    <i data-lucide="plus" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                                    <span data-i18n="manual_install">Manual Install</span></button>
+                            </div>
+                            <div class="settings-grid-row">
+                                <div class="form-group">
+                                    <label class="form-label" data-i18n="apache_version">Apache Version</label>
+                                    <div style="display: flex; gap: 8px;">
+                                        <select class="form-input" id="setting-apacheVersion" style="flex:1;"></select>
+                                    </div>
+                                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                        <button type="button" class="btn btn-secondary btn-sm"
+                                            onclick="openApacheGuideModal()">
+                                            <i data-lucide="help-circle"
+                                                style="width: 14px; height: 14px; margin-right: 4px;"></i> <span
+                                                data-i18n="how_to_install">How to Install</span>
+                                        </button>
+                                        <button type="button" class="btn btn-secondary btn-sm"
+                                            onclick="viewLogs('apache')">
+                                            <i data-lucide="file-text"
+                                                style="width: 14px; height: 14px; margin-right: 4px;"></i> <span
+                                                data-i18n="view_log">View Log</span>
+                                        </button>
+                                        <button type="button" class="btn btn-danger-outline btn-sm"
+                                            onclick="clearLogs('apache')">
+                                            <i data-lucide="trash-2"
+                                                style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                                            <span data-i18n="clear_log">Clear Log</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" data-i18n="php_version">PHP Version</label>
+                                    <div style="display: flex; gap: 8px;">
+                                        <select class="form-input" id="setting-phpVersion" style="flex:1;"></select>
+                                    </div>
+                                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                        <button type="button" class="btn btn-secondary btn-sm"
+                                            onclick="openPhpGuideModal()">
+                                            <i data-lucide="help-circle"
+                                                style="width: 14px; height: 14px; margin-right: 4px;"></i> <span
+                                                data-i18n="how_to_install">How to Install</span>
+                                        </button>
+                                        <div
+                                            style="font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; margin-left: 4px;">
+                                            <i data-lucide="info" style="width: 12px; height: 12px;"></i> <span
+                                                data-i18n="php_errors_desc">PHP errors are logged into Apache log
+                                                files.</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ═══ PHP Extensions Panel ═══ -->
+                            <div class="php-config-panel" id="php-extensions-panel">
+                                <div class="php-config-header" onclick="togglePhpPanel('extensions')">
+                                    <div class="php-config-header-left">
+                                        <i data-lucide="puzzle" class="php-config-icon"></i>
+                                        <div>
+                                            <div class="php-config-title" data-i18n="php_ext">PHP Extensions</div>
+                                            <div class="php-config-subtitle" data-i18n="php_ext_desc">Manage extensions
+                                                of the
+                                                chosen PHP version
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="php-config-header-right">
+                                        <span class="php-config-count" id="php-ext-count">0 / 0</span>
+                                        <span class="php-config-arrow" id="php-ext-arrow">▼</span>
+                                    </div>
+                                </div>
+                                <div class="php-config-body" id="php-extensions-body">
+                                    <div class="php-ext-search-bar">
+                                        <input type="text" class="form-input php-ext-search" id="php-ext-search"
+                                            placeholder="🔍 Search extensions..." data-i18n="search_ext"
+                                            autocomplete="off">
+                                    </div>
+                                    <div class="php-ext-grid" id="php-ext-grid">
+                                        <div style="color: var(--text-muted); padding: 20px; text-align: center;"
+                                            data-i18n="loading">
+                                            Loading...</div>
+                                    </div>
+                                    <div class="php-config-actions">
+                                        <button type="button" class="btn btn-secondary btn-sm"
+                                            onclick="loadPhpExtensions()">
+                                            <i data-lucide="rotate-cw"
+                                                style="width: 14px; height: 14px; margin-right: 4px;"></i> <span
+                                                data-i18n="refresh">Refresh</span>
+                                        </button>
+                                        <button type="button" class="btn btn-primary btn-sm" id="btn-save-extensions"
+                                            onclick="savePhpExtensions()">
+                                            <span data-i18n="save_ext">Save Extensions</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ═══ PHP Settings Panel ═══ -->
+                            <div class="php-config-panel" id="php-settings-panel">
+                                <div class="php-config-header" onclick="togglePhpPanel('settings')">
+                                    <div class="php-config-header-left">
+                                        <i data-lucide="settings-2" class="php-config-icon"></i>
+                                        <div>
+                                            <div class="php-config-title" data-i18n="php_settings_title">PHP Settings
+                                                (php.ini)
+                                            </div>
+                                            <div class="php-config-subtitle" data-i18n="php_settings_desc">Resource
+                                                limits,
+                                                error management, and other settings</div>
+                                        </div>
+                                    </div>
+                                    <div class="php-config-header-right">
+                                        <span class="php-config-arrow" id="php-settings-arrow">▼</span>
+                                    </div>
+                                </div>
+                                <div class="php-config-body" id="php-settings-body">
+                                    <div class="php-settings-grid" id="php-settings-grid">
+                                        <div style="color: var(--text-muted); padding: 20px; text-align: center;"
+                                            data-i18n="loading">
+                                            Loading...</div>
+                                    </div>
+                                    <div class="php-config-actions">
+                                        <button type="button" class="btn btn-secondary btn-sm"
+                                            onclick="loadPhpSettings()">
+                                            <i data-lucide="rotate-cw"
+                                                style="width: 14px; height: 14px; margin-right: 4px;"></i> <span
+                                                data-i18n="refresh">Refresh</span>
+                                        </button>
+                                        <button type="button" class="btn btn-primary btn-sm" id="btn-save-php-settings"
+                                            onclick="savePhpSettings()">
+                                            <span data-i18n="save_settings">Save Settings</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-grid-row">
+                                <div class="form-group">
+                                    <label class="form-label" data-i18n="mysql_version">MySQL Version</label>
+                                    <div style="display: flex; gap: 8px;">
+                                        <select class="form-input" id="setting-mysqlVersion" style="flex:1;"></select>
+                                    </div>
+                                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                        <button type="button" class="btn btn-secondary btn-sm"
+                                            onclick="openMysqlGuideModal()">
+                                            <i data-lucide="help-circle"
+                                                style="width: 14px; height: 14px; margin-right: 4px;"></i> <span
+                                                data-i18n="how_to_install">How to Install</span>
+                                        </button>
+                                        <button type="button" class="btn btn-secondary btn-sm"
+                                            onclick="viewLogs('mysql')">
+                                            <i data-lucide="file-text"
+                                                style="width: 14px; height: 14px; margin-right: 4px;"></i> <span
+                                                data-i18n="view_log">View Log</span>
+                                        </button>
+                                        <button type="button" class="btn btn-danger-outline btn-sm"
+                                            onclick="clearLogs('mysql')">
+                                            <i data-lucide="trash-2"
+                                                style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                                            <span data-i18n="clear_log">Clear Log</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="settings-section-title"
+                                style="margin-left:0; margin-top:24px; margin-bottom:16px;"
+                                data-i18n="network_ports_title">Network & Ports</div>
+                            <div class="settings-grid-ports">
+                                <div class="form-group">
+                                    <label class="form-label" data-i18n="http_port">HTTP Port</label>
+                                    <input type="number" class="form-input" id="setting-httpPort">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" data-i18n="https_port">HTTPS Port</label>
+                                    <input type="number" class="form-input" id="setting-httpsPort">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" data-i18n="mysql_port">MySQL Port</label>
+                                    <input type="number" class="form-input" id="setting-mysqlPort">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ═══ TAB: SCHEDULED TASKS ═══ -->
+                        <div id="settings-tab-cron" class="settings-tab-content">
+                            <div class="settings-section-title" style="margin-left:0; margin-bottom:16px;"
+                                data-i18n="tab_cron">
+                                Scheduled Tasks (Cron)</div>
+                            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.6;"
+                                data-i18n="cron_desc">
+                                Define commands to be run automatically at specific intervals.
+                                Schedule format: <code
+                                    style="background: rgba(99, 102, 241, 0.15); padding: 2px 6px; border-radius: 4px; font-size: 12px;">minute hour day month dayOfWeek</code>
+                                <br><span style="opacity: 0.7;">Examples: <code
+                                        style="font-size: 11px;">*/5 * * * *</code>
+                                    (every 5 minutes), <code style="font-size: 11px;">0 3 * * *</code> (every night at
+                                    03:00),
+                                    <code style="font-size: 11px;">0 */2 * * *</code> (every 2 hours)</span>
+                            </p>
+
+                            <!-- Add New Task -->
+                            <div class="cron-add-form"
+                                style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 24px; padding: 16px; border-radius: 10px; background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.15);">
+                                <div class="form-group" style="flex: 1; min-width: 140px; margin-bottom: 0;">
+                                    <label class="form-label" data-i18n="job_name">Job Name</label>
+                                    <input type="text" class="form-input" id="cron-new-name" placeholder="Take Backup"
+                                        data-i18n-attr="placeholder|job_name_hint">
+                                </div>
+                                <div class="form-group" style="min-width: 140px; margin-bottom: 0;">
+                                    <label class="form-label" data-i18n="schedule">Schedule</label>
+                                    <input type="text" class="form-input" id="cron-new-schedule" placeholder="0 3 * * *"
+                                        data-i18n-attr="placeholder|placeholder_cron_schedule"
+                                        style="font-family: 'JetBrains Mono', monospace;">
+                                </div>
+                                <div class="form-group" style="flex: 2; min-width: 200px; margin-bottom: 0;">
+                                    <label class="form-label" data-i18n="command">Command</label>
+                                    <input type="text" class="form-input" id="cron-new-command"
+                                        placeholder="node backup.js"
+                                        data-i18n-attr="placeholder|placeholder_cron_command"
+                                        style="font-family: 'JetBrains Mono', monospace;">
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button type="button" class="btn btn-secondary" onclick="openCronSamplesModal()"
+                                        style="height: 38px;">
+                                        <i data-lucide="help-circle"
+                                            style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                                        <span data-i18n="samples">Samples</span>
+                                    </button>
+                                    <button type="button" class="btn btn-primary" onclick="addCronJob()"
+                                        style="height: 38px; white-space: nowrap;">
+                                        <i data-lucide="plus" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                                        <span data-i18n="create">Add</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Task List -->
+                            <div class="vhosts-list" id="cron-jobs-grid">
+                                <div style="color: var(--text-muted); font-size: 14px; padding: 20px; text-align: center;"
+                                    data-i18n="loading">Loading...</div>
+                            </div>
+                        </div>
+
+                        <!-- ═══ TAB: QUICK ACCESS ═══ -->
+                        <div id="settings-tab-quick-access" class="settings-tab-content">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+                                <div style="flex: 1;">
+                                    <div class="settings-section-title" style="margin-left:0; margin-bottom:8px;"
+                                        data-i18n="quick_access_mgmt">Quick Access Management</div>
+                                    <div style="color: var(--text-secondary); font-size: 14px; line-height: 1.5;"
+                                        data-i18n="quick_access_desc">Add custom links or local applications to the
+                                        dashboard's Quick Access menu.</div>
+                                </div>
+                                <button type="button" class="btn btn-primary" onclick="openQuickAccessModal()">
+                                    <i data-lucide="plus" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                                    <span data-i18n="add_new">Add New</span>
+                                </button>
+                            </div>
+
+                            <div class="card"
+                                style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); padding: 0; box-shadow: none; overflow: hidden; border-radius: 8px;">
+                                <table class="table" style="margin-bottom: 0; width: 100%; border-collapse: collapse;">
+                                    <thead style="background: rgba(255,255,255,0.03);">
+                                        <tr>
+                                            <th style="padding: 14px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); border-bottom: 1px solid var(--border-color); text-align: left;"
+                                                data-i18n="title">Title</th>
+                                            <th style="padding: 14px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); border-bottom: 1px solid var(--border-color); text-align: left;"
+                                                data-i18n="url">URL / Path</th>
+                                            <th style="padding: 14px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); border-bottom: 1px solid var(--border-color); text-align: left;"
+                                                data-i18n="browser">Browser</th>
+                                            <th style="padding: 14px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); border-bottom: 1px solid var(--border-color); text-align: right; padding-right: 20px;"
+                                                data-i18n="actions">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="quick-access-list-tbody">
+                                        <!-- Will be filled by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div
+                            style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-primary" data-i18n="save_settings">Save
+                                Settings</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ─── DATABASE OPERATIONS ─── -->
+            <div id="section-database" class="section">
+                <div class="page-header">
+                    <h1 class="page-title" data-i18n="db_ops">Database Operations</h1>
+                    <p class="page-subtitle" data-i18n="db_ops_desc">MySQL DB management and SQL import/export tools</p>
+                </div>
+
+                <div class="card" style="margin-bottom: 24px; position: relative; z-index: 10;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; margin-bottom: 16px;">
+                        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+                            <label class="form-label" data-i18n="active_db">Active Database Selection</label>
+                            <select class="form-input" id="db-ops-select" onchange="loadDatabaseTables()">
+                                <option value="" data-i18n="select_db">Select a database...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button id="btn-create-db" class="btn btn-primary" onclick="openCreateDbModal()">
+                            <i data-lucide="plus" style="width: 16px; height: 16px; margin-right: 4px;"></i> <span
+                                data-i18n="create_db">Create Database</span>
+                        </button>
+                        <button id="btn-export-db" class="btn btn-secondary" onclick="exportDatabase()" style="display: none;">
+                            <i data-lucide="download" style="width: 16px; height: 16px; margin-right: 4px;"></i>
+                            <span data-i18n="export_db">Export Database</span>
+                        </button>
+                        <button id="btn-import-db" class="btn btn-secondary" onclick="openImportSqlModal()">
+                            <i data-lucide="upload" style="width: 16px; height: 16px; margin-right: 4px;"></i>
+                            <span data-i18n="import_db">Import Database</span>
+                        </button>
+                        <button id="btn-import-table" class="btn btn-secondary" onclick="openImportSqlModal()"
+                            style="display: none; border-color: rgba(245, 158, 11, 0.3); color: var(--accent-amber);">
+                            <i data-lucide="upload" style="width: 16px; height: 16px; margin-right: 4px;"></i>
+                            <span data-i18n="import_table_title">Import to Table</span>
+                        </button>
+                        <button id="btn-delete-db" class="btn btn-danger-outline" onclick="deleteDatabase()" style="display: none;">
+                            <i data-lucide="trash-2" style="width: 16px; height: 16px; margin-right: 4px;"></i>
+                            <span data-i18n="del_db">Delete Database</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"
+                        style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <div class="card-title" data-i18n="db_tables">Database Tables</div>
+                        <div id="bulk-table-actions" style="display: none; align-items: center; gap: 8px;">
+                            <label class="form-checkbox"
+                                style="margin-right: 8px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="selectAllTables" class="table-cb"
+                                    onchange="toggleAllTables(this)">
+                                <span data-i18n="select_all">Select All</span>
+                            </label>
+                            <button class="btn btn-secondary btn-sm" onclick="bulkTruncateTables()"
+                                style="border-color: rgba(245, 158, 11, 0.3); color: var(--accent-amber); padding: 5px 10px;">
+                                <i data-lucide="brush" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                                <span data-i18n="clear_selected">Truncate Selected</span>
+                            </button>
+                            <button class="btn btn-secondary btn-sm" onclick="bulkDeleteTables()"
+                                style="border-color: rgba(239, 68, 68, 0.3); color: var(--accent-rose); padding: 5px 10px;">
+                                <i data-lucide="trash-2" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                                <span data-i18n="del_selected">Drop Selected</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="vhosts-list" id="db-tables-grid">
+                        <div class="empty-state" data-i18n="plz_select_db">Please select a database to proceed.</div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ═══ VERSION MODAL ═══ -->
+    <div class="modal-overlay" id="modal-version">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" data-i18n="manual_install_modal">Install Version Folder (Manual)</div>
+                <button class="modal-close" onclick="closeVersionModal()">✕</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-i18n="service_type">Service Type</label>
+                <select class="form-input" id="new-version-type" onchange="updateVersionLabel()">
+                    <option value="php">PHP</option>
+                    <option value="apache">Apache</option>
+                    <option value="mysql">MySQL</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-i18n="version_num">Version Number</label>
+                <input type="text" class="form-input" id="new-version-number" placeholder="E.g. 8.1.0"
+                    data-i18n-attr="placeholder|placeholder_version_num">
+            </div>
+            <div class="form-group" style="margin-bottom: 5px;">
+                <label class="form-label" data-i18n="choose_zip_file">Select ZIP File</label>
+                <p style="font-size: 11px; color: var(--accent-amber); margin-bottom: 8px; line-height: 1.4; opacity: 0.9;"
+                    data-i18n="manual_install_warning">The file name must contain the service type (php, apache,
+                    mysql).</p>
+                <div style="position: relative; overflow: hidden; border-radius: 8px;">
+                    <button type="button" class="btn btn-secondary"
+                        style="width: 100%; text-align: left; padding: 10px 14px; display: flex; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); cursor: pointer;"
+                        onclick="document.getElementById('new-version-file').click()" id="install-file-btn">
+                        <i data-lucide="file-up" style="width: 18px; margin-right: 12px; opacity: 0.7;"></i>
+                        <span id="install-file-name" data-i18n="select_file"
+                            style="opacity: 0.9; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Select
+                            File</span>
+                    </button>
+                    <input type="file" id="new-version-file" accept=".zip" style="display: none;" onchange="{
+                        const nm = document.getElementById('install-file-name');
+                        const btn = document.getElementById('install-file-btn');
+                        if (this.files.length) {
+                            nm.removeAttribute('data-i18n');
+                            nm.innerText = this.files[0].name;
+                            btn.setAttribute('title', this.files[0].name);
+                        } else {
+                            nm.setAttribute('data-i18n', 'select_file');
+                            btn.removeAttribute('title');
+                            if(window.applyTranslations) window.applyTranslations();
+                        }
+                    }">
+                </div>
+                <small class="form-hint" data-i18n="manual_install_hint">E.g. mysql-9.5.0-winx64.zip</small>
+            </div>
+
+            <div id="install-progress-wrap" style="display: none; margin-top: 16px;">
+                <div class="clone-progress-bar">
+                    <div class="clone-progress-fill" id="install-progress-fill" style="width: 0%"></div>
+                </div>
+                <div class="clone-status" id="install-progress-text" style="margin-top: 8px;"></div>
+            </div>
+
+            <div style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px;">
+                <button class="btn btn-secondary" onclick="closeVersionModal()" data-i18n="cancel">Cancel</button>
+                <button class="btn btn-primary" id="btn-install-local" onclick="installLocalVersion()">
+                    <span data-i18n="install">Install / Upload</span></button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-log">
+        <div class="modal" style="max-width: 800px;">
+            <div class="modal-header">
+                <div class="modal-title" id="log-modal-title">Log Records</div>
+                <button class="modal-close" onclick="closeLogModal()">✕</button>
+            </div>
+            <div class="log-viewer">
+                <textarea id="log-viewer-content" readonly
+                    style="width: 100%; height: 350px; background: #000; color: #0f0; font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); resize: vertical;"></textarea>
+            </div>
+            <div style="margin-top: 24px; display: flex; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="closeLogModal()" data-i18n="close">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ CONFIRM MODAL ═══ -->
+    <div class="modal-overlay" id="modal-confirm">
+        <div class="modal" style="max-width: 420px; padding: 24px;">
+            <div class="modal-header" style="margin-bottom: 16px;">
+                <div class="modal-title" style="font-size: 18px;"><i data-lucide="alert-triangle"
+                        style="width: 20px; height: 20px; color: var(--accent-rose); margin-right: 8px;"></i> <span
+                        data-i18n="confirm_required">Confirmation Required</span></div>
+                <button class="modal-close" onclick="closeConfirmModal()">✕</button>
+            </div>
+            <div id="confirm-message"
+                style="color: var(--text-secondary); margin-bottom: 24px; font-size: 14px; line-height: 1.5;">
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                <button class="btn btn-secondary" onclick="closeConfirmModal()" data-i18n="cancel">Cancel</button>
+                <button class="btn btn-danger-outline" id="confirm-action-btn"
+                    style="background: rgba(244, 63, 94, 0.1); border-color: var(--accent-rose);"
+                    onclick="executeConfirmAction()"> <span data-i18n="btn_yes_delete">Yes, Delete</span></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ BACKUP MODAL ═══ -->
+    <div class="modal-overlay" id="modal-backup">
+        <div class="modal" style="max-width: 500px; padding: 24px;">
+            <div class="modal-header" style="margin-bottom: 16px;">
+                <div class="modal-title" style="font-size: 18px;"><i data-lucide="package"
+                        style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-blue-light);"></i>
+                    <span data-i18n="backup_project_db">Backup Project & Database</span>
+                </div>
+                <button class="modal-close" onclick="closeBackupModal()">✕</button>
+            </div>
+            <div style="color: var(--text-secondary); margin-bottom: 24px; font-size: 14px; line-height: 1.5;">
+                <strong id="backup-project-name" style="color: var(--accent-blue-light);">Project Name</strong> <span
+                    data-i18n="backup_filename_desc">folder will be zipped (timestamped). You can select the database to
+                    export below. If not selected, only the folder will be backed up.</span>
+            </div>
+
+            <input type="hidden" id="backup-project-path">
+
+            <div class="form-group">
+                <label class="form-label" data-i18n="modal_backup_select_db">Select Database (Optional)</label>
+                <select class="form-input" id="backup-db-select">
+                    <option value="" data-i18n="backup_folder_only_opt">Backup Folder Only</option>
+                    <!-- Dynamically populated -->
+                </select>
+                <small class="form-hint" data-i18n="backup_modal_hint">Selected DB's SQL file will be placed in the
+                    folder & zipped together.</small>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+                <button class="btn btn-primary" id="btn-do-backup" onclick="executeBackup()">
+                    <i data-lucide="rocket" style="width: 16px; height: 16px; margin-right: 6px;"></i> <span
+                        data-i18n="backup_zip">Backup (ZIP)</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ RENAME MODAL ═══ -->
+    <div class="modal-overlay" id="modal-rename">
+        <div class="modal" style="max-width: 420px; padding: 24px;">
+            <div class="modal-header" style="margin-bottom: 16px;">
+                <div class="modal-title" style="font-size: 18px;"><i data-lucide="pencil"
+                        style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-blue-light);"></i>
+                    <span data-i18n="backup_proj_name">Rename Project</span>
+                </div>
+                <button class="modal-close" onclick="closeRenameModal()">✕</button>
+            </div>
+            <div style="color: var(--text-secondary); margin-bottom: 20px; font-size: 14px; line-height: 1.5;">
+                <span data-i18n="rename_modal_desc">Enter a new name for the project folder.</span>
+            </div>
+
+            <input type="hidden" id="rename-old-name">
+
+            <div class="form-group">
+                <label class="form-label" data-i18n="new_project_name">New Project Name</label>
+                <input type="text" class="form-input" id="rename-new-name" placeholder="project-name"
+                    data-i18n-attr="placeholder|placeholder_project_name" autocomplete="off">
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+                <button class="btn btn-secondary" onclick="closeRenameModal()">
+                    <span data-i18n="cancel">Cancel</span>
+                </button>
+                <button class="btn btn-primary" id="btn-do-rename" onclick="executeRename()">
+                    <i data-lucide="check" style="width: 16px; height: 16px; margin-right: 6px;"></i> <span
+                        data-i18n="confirm">OK</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ RESTORE MODAL ═══ -->
+    <div class="modal-overlay" id="modal-restore">
+        <div class="modal" style="max-width: 540px; padding: 24px;">
+            <div class="modal-header" style="margin-bottom: 16px;">
+                <div class="modal-title" style="font-size: 18px;"><i data-lucide="archive-restore"
+                        style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-blue-light);"></i>
+                    <span data-i18n="extract_install">Extract and Install</span>
+                </div>
+                <button class="modal-close" onclick="closeRestoreModal()">✕</button>
+            </div>
+            <div style="color: var(--text-secondary); margin-bottom: 24px; font-size: 14px; line-height: 1.5;">
+                <strong id="restore-filename-display" style="color: var(--accent-blue-light);"></strong> <span
+                    data-i18n="restore_msg_suffix_full">backup will be extracted to target. Please select the full
+                    target folder for the ZIP extraction. Original files will be cleared.</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" data-i18n="target_extract_folder">Target Extraction Folder</label>
+                <select class="form-input" id="restore-target-select">
+                    <!-- Dynamically populated -->
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-top: 16px;">
+                <label class="form-checkbox">
+                    <input type="checkbox" id="restore-db-checkbox" class="table-cb" checked>
+                    <span data-i18n="restore_db_checkbox">Import Database</span>
+                </label>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+                <button class="btn btn-primary" id="btn-do-restore" onclick="confirmExecuteRestore()">
+                    <i data-lucide="rocket" style="width: 16px; height: 16px; margin-right: 6px;"></i> <span
+                        data-i18n="extract_install_btn">Extract & Install</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ CLONE MODAL ═══ -->
+    <div class="modal-overlay" id="modal-clone">
+        <div class="modal" style="max-width: 560px; padding: 28px;">
+            <div class="modal-header" style="margin-bottom: 20px;">
+                <div class="modal-title" style="font-size: 18px;"><i data-lucide="git-branch"
+                        style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-blue-light);"></i>
+                    <span data-i18n="git_repo_clone">Git Repo Clone</span>
+                </div>
+                <button class="modal-close" onclick="closeCloneModal()">✕</button>
+            </div>
+
+            <div style="color: var(--text-secondary); margin-bottom: 20px; font-size: 13px; line-height: 1.6;"
+                data-i18n="clone_desc">
+                Enter the <strong style="color: var(--accent-blue-light);">HTTPS</strong> or
+                <strong style="color: var(--accent-blue-light);">SSH</strong> address of the repo to clone.<br>
+                The project will be cloned into your <strong style="color: var(--accent-emerald);">WWW</strong> folder.
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label class="form-label" data-i18n="clone_addr">Clone Address</label>
+                <div class="clone-input-row">
+                    <input type="text" class="form-input" id="clone-url-input"
+                        placeholder="https://github.com/user/repo.git" data-i18n-attr="placeholder|placeholder_clone_url" oninput="updateCloneButton()" style="flex: 1;">
+                    <button type="button" class="btn btn-primary" id="btn-clone-action" onclick="executeClone()"
+                        style="white-space: nowrap; min-width: 160px;">
+                        <i data-lucide="copy" style="width: 16px; height: 16px; margin-right: 6px;"></i> <span
+                            data-i18n="btn_paste_download">Paste and Download</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="clone-progress" style="display: none;">
+                <div class="clone-progress-bar">
+                    <div class="clone-progress-fill" id="clone-progress-fill"></div>
+                </div>
+                <div class="clone-status" id="clone-status"></div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="closeCloneModal()" data-i18n="close">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ DATABASE MODALS ═══ -->
+    <div class="modal-overlay" id="modal-create-db">
+        <div class="modal" style="max-width: 400px; padding: 24px;">
+            <div class="modal-header" style="margin-bottom: 16px;">
+                <div class="modal-title" style="font-size: 18px;" data-i18n="create_new_db">Create New Database</div>
+                <button class="modal-close" onclick="closeCreateDbModal()">✕</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-i18n="db_name">Database Name</label>
+                <input type="text" class="form-input" id="new-db-name" placeholder="E.g. project_db"
+                    data-i18n-attr="placeholder|db_name_hint">
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-i18n="collation">Charset (Collation)</label>
+                <select class="form-input" id="new-db-col">
+                    <option value="utf8mb4_general_ci">utf8mb4_general_ci (<span
+                            data-i18n="recommended">Recommended</span>)</option>
+                    <option value="utf8mb4_unicode_ci">utf8mb4_unicode_ci</option>
+                    <option value="utf8_general_ci">utf8_general_ci</option>
+                </select>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+                <button class="btn btn-secondary" onclick="closeCreateDbModal()" data-i18n="cancel_2">Cancel</button>
+                <button class="btn btn-primary" onclick="executeCreateDb()"><span data-i18n="create">Create</span></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ IMPORT SQL MODAL ═══ -->
+    <div class="modal-overlay" id="modal-import-sql">
+        <div class="modal" style="max-width: 450px; padding: 24px;">
+            <div class="modal-header" style="margin-bottom: 16px;">
+                <div class="modal-title" style="font-size: 18px;" data-i18n="import_sql">Import SQL</div>
+                <button class="modal-close" onclick="closeImportSqlModal()">✕</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-i18n="target_db_import">Target Database</label>
+                <select class="form-input" id="import-target-db" onchange="toggleImportNewDbInput()">
+                    <!-- Populated dynamically -->
+                </select>
+            </div>
+            <div class="form-group" id="import-new-db-group" style="display: none; margin-bottom: 16px;">
+                <label class="form-label" data-i18n="new_db_name">New Database Name</label>
+                <input type="text" class="form-input" id="import-new-db-name" placeholder="new_database_name"
+                    data-i18n-attr="placeholder|placeholder_import_new_db" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label class="form-label" data-i18n="choose_sql_file">Select SQL File (.sql)</label>
+                <div style="position: relative; overflow: hidden; border-radius: 8px;">
+                    <button type="button" class="btn btn-secondary"
+                        style="width: 100%; text-align: left; padding: 10px 14px; display: flex; align-items: center; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); cursor: pointer;"
+                        onclick="document.getElementById('import-sql-file').click()" id="import-sql-btn">
+                        <i data-lucide="file-up" style="width: 18px; margin-right: 12px; opacity: 0.7;"></i>
+                        <span id="import-file-name" data-i18n="select_file"
+                            style="opacity: 0.9; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Select
+                            File</span>
+                    </button>
+                    <input type="file" id="import-sql-file" accept=".sql" style="display: none;" onchange="{
+                        const nm = document.getElementById('import-file-name');
+                        const btn = document.getElementById('import-sql-btn');
+                        const targetSelect = document.getElementById('import-target-db');
+                        const newDbInput = document.getElementById('import-new-db-name');
+                        if (this.files.length) {
+                            nm.removeAttribute('data-i18n');
+                            nm.innerText = this.files[0].name;
+                            btn.setAttribute('title', this.files[0].name);
+                            if (targetSelect.value === '__NEW__' && !newDbInput.value) {
+                                newDbInput.value = this.files[0].name.replace(/\.sql$/i, '');
+                            }
+                        } else {
+                            nm.setAttribute('data-i18n', 'select_file');
+                            btn.removeAttribute('title');
+                            if(window.applyTranslations) window.applyTranslations();
+                        }
+                    }">
+                </div>
+            </div>
+            <div id="import-sql-progress-wrap" style="display: none; margin-top: 16px;">
+                <div class="clone-progress-bar">
+                    <div class="clone-progress-fill indeterminate" style="width: 30%"></div>
+                </div>
+                <div class="clone-status" style="margin-top: 8px;"></div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+                <button class="btn btn-secondary" onclick="closeImportSqlModal()" data-i18n="cancel_2">Cancel</button>
+                <button class="btn btn-primary" id="btn-import-sql" onclick="executeImportSql()">
+                    <span data-i18n="import_and_transfer">Upload & Import</span></button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ═══ PERSISTENT STATUS BAR ═══ -->
+    <footer class="persistent-status-bar">
+        <div class="status-indicators">
+            <div class="footer-status-item" id="footer-apache-status">
+                <span class="status-circle"></span>
+                <span class="status-label">Apache</span>
+            </div>
+            <div class="footer-status-item" id="footer-mysql-status">
+                <span class="status-circle"></span>
+                <span class="status-label">MySQL</span>
+            </div>
+        </div>
+        <div class="developer-link">
+            <span data-i18n="developer_label" style="opacity:0.6; font-weight:400;">Developer:</span>
+            <a href="https://github.com/aytackayin" target="_blank" rel="noopener noreferrer">
+                <i data-lucide="terminal" style="width: 12px; height: 12px; opacity:0.8;"></i>
+                <span>Aytaç KAYIN</span>
+            </a>
+        </div>
+    </footer>
+
+    <!-- ═══ CONNECTION LOST OVERLAY ═══ -->
+    <div class="connection-lost-overlay" id="connection-error-overlay">
+        <div class="connection-lost-content">
+            <div class="connection-lost-icon">
+                <i data-lucide="plug-zap" style="width: 48px; height: 48px; color: white;"></i>
+            </div>
+            <h2 class="connection-lost-title" data-i18n="app_closed_title">Application Closed</h2>
+            <p class="connection-lost-text" data-i18n="app_closed_text">The backend server is currently unreachable.
+                Please wait while we attempt to reconnect.</p>
+
+            <div class="reconnection-loader">
+                <div class="spinner"></div>
+                <span class="reconnection-status" data-i18n="reconnecting">Reconnecting...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ TOAST CONTAINER ═══ -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- ═══ CRON SAMPLES MODAL ═══ -->
+    <div class="modal-overlay" id="modal-cron-samples">
+        <div class="modal" style="max-width: 700px; padding: 24px;">
+            <div class="modal-header" style="margin-bottom: 20px;">
+                <div class="modal-title"><i data-lucide="help-circle"
+                        style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-blue-light);"></i>
+                    <span data-i18n="cron_samples_title">Cron Schedule Samples & Scenarios</span>
+                </div>
+                <button class="modal-close" onclick="closeCronSamplesModal()">✕</button>
+            </div>
+
+            <div style="max-height: 500px; overflow-y: auto; padding-right: 8px;">
+                <div class="nav-section-title" style="margin-left:0; margin-bottom:12px;" data-i18n="cron_format_guide">
+                    Schedule Format Guide</div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 24px;">
+                    <thead>
+                        <tr
+                            style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); text-align: left;">
+                            <th style="padding: 8px;">Schedule</th>
+                            <th style="padding: 8px;" data-i18n="description">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td style="padding: 8px;"><code style="color: var(--accent-blue-light);">* * * * *</code>
+                            </td>
+                            <td style="padding: 8px;" data-i18n="cron_every_min">Every minute</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td style="padding: 8px;"><code style="color: var(--accent-blue-light);">*/5 * * * *</code>
+                            </td>
+                            <td style="padding: 8px;" data-i18n="cron_every_5min">Every 5 minutes</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td style="padding: 8px;"><code style="color: var(--accent-blue-light);">0 * * * *</code>
+                            </td>
+                            <td style="padding: 8px;" data-i18n="cron_every_hour">Every hour (at minute 0)</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td style="padding: 8px;"><code style="color: var(--accent-blue-light);">0 0 * * *</code>
+                            </td>
+                            <td style="padding: 8px;" data-i18n="cron_every_day">Every day at midnight (00:00)</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td style="padding: 8px;"><code style="color: var(--accent-blue-light);">0 0 * * 0</code>
+                            </td>
+                            <td style="padding: 8px;" data-i18n="cron_every_week">Every Sunday at midnight</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td style="padding: 8px;"><code style="color: var(--accent-blue-light);">0 0 1 * *</code>
+                            </td>
+                            <td style="padding: 8px;" data-i18n="cron_every_month">First day of every month at 00:00
+                            </td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td style="padding: 8px;"><code style="color: var(--accent-blue-light);">0 0 1 1 *</code>
+                            </td>
+                            <td style="padding: 8px;" data-i18n="cron_every_year">Every New Year's Day (Jan 1st)</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="nav-section-title" style="margin-left:0; margin-bottom:12px;" data-i18n="cron_scenarios">
+                    Practical Scenarios</div>
+
+                <div style="margin-bottom: 16px;">
+                    <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px; color: var(--text-primary);"
+                        data-i18n="cron_url_trigger">1. Triggering a Website URL</div>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;"
+                        data-i18n="cron_url_desc">Useful for triggering PHP cron jobs on remote servers or local sites.
+                    </div>
+                    <div
+                        style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                        <code style="color: var(--accent-emerald);">curl -s "http://example.com/cron.php"</code>
+                        <button type="button" class="btn btn-sm"
+                            onclick="copyToCron('0 * * * *', 'curl -s &quot;http://example.com/cron.php&quot;')"
+                            data-i18n="use">Use</button>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px; color: var(--text-primary);"
+                        data-i18n="cron_node_script">2. Running a Local Node.js Script</div>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;"
+                        data-i18n="cron_node_desc">Run a script located in your TouchAMP root or project folder.</div>
+                    <div
+                        style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                        <code style="color: var(--accent-emerald);">node test-cron.js</code>
+                        <button type="button" class="btn btn-sm"
+                            onclick="copyToCron('*/15 * * * *', 'node test-cron.js')" data-i18n="use">Use</button>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px; color: var(--text-primary);"
+                        data-i18n="cron_php_cli">3. Running a Local PHP Script (CLI)</div>
+                    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;"
+                        data-i18n="cron_php_desc">Execute PHP files directly using the built-in PHP binary.</div>
+                    <div
+                        style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                        <code style="color: var(--accent-emerald);">php www/my-project/cron.php</code>
+                        <button type="button" class="btn btn-sm"
+                            onclick="copyToCron('0 0 * * *', 'php www/my-project/cron.php')"
+                            data-i18n="use">Use</button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 24px; display: flex; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="closeCronSamplesModal()" data-i18n="close">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ QUICK ACCESS ITEM MODAL ═══ -->
+    <div class="modal-overlay" id="modal-quick-access">
+        <div class="modal" style="max-width: 480px; padding: 24px;">
+            <div class="modal-header" style="margin-bottom: 20px;">
+                <div class="modal-title" id="qa-modal-title"><i data-lucide="external-link"
+                        style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-blue-light);"></i>
+                    <span data-i18n="add_quick_access">Add Quick Access Link</span>
+                </div>
+                <button class="modal-close" onclick="closeQuickAccessModal()">✕</button>
+            </div>
+
+            <input type="hidden" id="qa-item-id">
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label class="form-label" data-i18n="qa_title">Display Title</label>
+                <input type="text" class="form-input" id="qa-input-title" placeholder="My App" data-i18n-attr="placeholder|placeholder_qa_title">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label class="form-label" data-i18n="qa_url">URL or Path</label>
+                <input type="text" class="form-input" id="qa-input-url" placeholder="http://myapp.test" data-i18n-attr="placeholder|placeholder_qa_url">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label class="form-label" data-i18n="qa_icon">Lucide Icon (Optional)</label>
+                <input type="text" class="form-input" id="qa-input-icon" placeholder="external-link" data-i18n-attr="placeholder|placeholder_qa_icon">
+                <small class="form-hint" data-i18n="qa_icon_hint">Use icon names from <a href="https://lucide.dev/icons"
+                        target="_blank" style="color: var(--accent-blue-light);">lucide.dev</a></small>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label class="form-label" data-i18n="browser_selection">Browser Selection</label>
+                <select class="form-input" id="qa-input-browser-mode" onchange="toggleQaBrowserPath()">
+                    <option value="system" data-i18n="default_browser">Default Browser</option>
+                    <option value="electron" data-i18n="electron_browser">Electron App Browser</option>
+                    <option value="path" data-i18n="custom_browser_path">Custom Browser path</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="qa-browser-path-wrap" style="display: none; margin-bottom: 16px;">
+                <label class="form-label" data-i18n="custom_browser_path">Custom Browser path</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" class="form-input" id="qa-input-browser-path"
+                        placeholder="C:\Program Files\Google\Chrome\Application\chrome.exe"
+                        data-i18n-attr="placeholder|placeholder_browser_path" style="flex: 1;">
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+                <button class="btn btn-secondary" onclick="closeQuickAccessModal()">
+                    <span data-i18n="cancel">Cancel</span>
+                </button>
+                <button class="btn btn-primary" id="btn-save-qa" onclick="executeSaveQuickAccess()">
+                    <i data-lucide="check" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                    <span data-i18n="save">Save</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ APACHE GUIDE MODAL ═══ -->
+    <div class="modal-overlay" id="modal-apache-guide">
+        <div class="modal" style="max-width: 500px; padding: 24px;">
+            <div class="modal-header" style="margin-bottom: 20px;">
+                <div class="modal-title">
+                    <i data-lucide="help-circle" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-blue-light);"></i>
+                    <span data-i18n="apache_guide_title">Apache Installation Guide</span>
+                </div>
+                <button class="modal-close" onclick="closeApacheGuideModal()">✕</button>
+            </div>
+            
+            <div style="color: var(--text-primary); line-height: 1.6;">
+                <p data-i18n="apache_guide_desc" style="margin-bottom: 16px;">To download and install a compatible Apache version, follow these steps:</p>
+                <ul style="margin: 0; padding-left: 20px; margin-bottom: 20px;">
+                    <li style="margin-bottom: 8px;">
+                        <span data-i18n="apache_guide_step1">Go to the Apache Lounge download page.</span>
+                        <div style="margin-top: 8px;">
+                            <button class="btn btn-sm btn-primary" onclick="openUrlInBrowser('https://www.apachelounge.com/download/')" style="padding: 4px 12px; font-size: 11px;">
+                                <i data-lucide="external-link" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                                <span data-i18n="open_download_page">Open Download Page</span>
+                            </button>
+                        </div>
+                    </li>
+                    <li data-i18n="apache_guide_step2" style="margin-bottom: 8px;">Download the latest Apache Win64 (x64) .zip file.</li>
+                    <li data-i18n="apache_guide_step3" style="margin-bottom: 8px;">Select the downloaded .zip file using the Manual Install button.</li>
+                    <li data-i18n="apache_guide_step4">The app will automatically install it to the correct folder.</li>
+                </ul>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
+                <button class="btn btn-secondary" onclick="closeApacheGuideModal()">
+                    <span data-i18n="close">Close</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ PHP GUIDE MODAL ═══ -->
+    <div class="modal-overlay" id="modal-php-guide">
+        <div class="modal" style="max-width: 500px; padding: 24px;">
+            <div class="modal-header" style="margin-bottom: 20px;">
+                <div class="modal-title">
+                    <i data-lucide="help-circle" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-blue-light);"></i>
+                    <span data-i18n="php_guide_title">PHP Installation Guide</span>
+                </div>
+                <button class="modal-close" onclick="closePhpGuideModal()">✕</button>
+            </div>
+            
+            <div style="color: var(--text-primary); line-height: 1.6;">
+                <p data-i18n="php_guide_desc" style="margin-bottom: 16px;">To download and install a compatible PHP version, follow these steps:</p>
+                <ul style="margin: 0; padding-left: 20px; margin-bottom: 20px;">
+                    <li style="margin-bottom: 8px;">
+                        <span data-i18n="php_guide_step1">Go to the official PHP Windows download page.</span>
+                        <div style="margin-top: 8px;">
+                            <button class="btn btn-sm btn-primary" onclick="openUrlInBrowser('https://windows.php.net/download/')" style="padding: 4px 12px; font-size: 11px;">
+                                <i data-lucide="external-link" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                                <span data-i18n="open_download_page">Open Download Page</span>
+                            </button>
+                        </div>
+                    </li>
+                    <li data-i18n="php_guide_step2" style="margin-bottom: 8px;">Make sure to download the <b>Thread Safe</b> x64 version (.zip) for Apache compatibility.</li>
+                    <li data-i18n="php_guide_step3" style="margin-bottom: 8px;">Select the downloaded .zip file using the Manual Install button on this page.</li>
+                    <li data-i18n="php_guide_step4">The app will automatically place the files and configure the settings.</li>
+                </ul>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
+                <button class="btn btn-secondary" onclick="closePhpGuideModal()">
+                    <span data-i18n="close">Close</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ MYSQL GUIDE MODAL ═══ -->
+    <div class="modal-overlay" id="modal-mysql-guide">
+        <div class="modal" style="max-width: 500px; padding: 24px;">
+            <div class="modal-header" style="margin-bottom: 20px;">
+                <div class="modal-title">
+                    <i data-lucide="help-circle" style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-blue-light);"></i>
+                    <span data-i18n="mysql_guide_title">MySQL Installation Guide</span>
+                </div>
+                <button class="modal-close" onclick="closeMysqlGuideModal()">✕</button>
+            </div>
+            
+            <div style="color: var(--text-primary); line-height: 1.6;">
+                <p data-i18n="mysql_guide_desc" style="margin-bottom: 16px;">To download and install a compatible MySQL version, follow these steps:</p>
+                <ul style="margin: 0; padding-left: 20px; margin-bottom: 20px;">
+                    <li style="margin-bottom: 8px;">
+                        <span data-i18n="mysql_guide_step1">Go to the official MySQL Community download page.</span>
+                        <div style="margin-top: 8px;">
+                            <button class="btn btn-sm btn-primary" onclick="openUrlInBrowser('https://dev.mysql.com/downloads/mysql/')" style="padding: 4px 12px; font-size: 11px;">
+                                <i data-lucide="external-link" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                                <span data-i18n="open_download_page">Open Download Page</span>
+                            </button>
+                        </div>
+                    </li>
+                    <li data-i18n="mysql_guide_step2" style="margin-bottom: 8px;">Always download the <b>ZIP Archive</b> version (not the installer).</li>
+                    <li data-i18n="mysql_guide_step3" style="margin-bottom: 8px;">Select the downloaded .zip file using the Manual Install button on this page.</li>
+                    <li data-i18n="mysql_guide_step4">The app will automatically create database folders and configure the settings.</li>
+                </ul>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
+                <button class="btn btn-secondary" onclick="closeMysqlGuideModal()">
+                    <span data-i18n="close">Close</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

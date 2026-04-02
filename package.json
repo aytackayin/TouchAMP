@@ -1,0 +1,54 @@
+{
+  "name": "touchamp",
+  "version": "1.0.0",
+  "description": "TouchAMP — Local Development Environment",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "server": "node server.js",
+    "build": "electron-builder --win",
+    "convert-icons": "node convert-icons.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "@electron/packager": "^19.1.0",
+    "electron": "^41.0.3",
+    "electron-builder": "^26.8.1",
+    "electron-winstaller": "^5.4.0",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.34.5"
+  },
+  "build": {
+    "appId": "com.touchamp.app",
+    "productName": "TouchAMP",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "requestedExecutionLevel": "requireAdministrator",
+      "target": [
+        "dir"
+      ]
+    },
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!**/bin/versions/**",
+      "!**/data/**",
+      "!**/www/**",
+      "!**/backups/**",
+      "!**/mysql_exports/**",
+      "!**/.git/**"
+    ],
+    "extraResources": [
+      {
+        "from": "public/icons",
+        "to": "icons"
+      }
+    ]
+  }
+}

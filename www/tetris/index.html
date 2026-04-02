@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TouchAMP Tetris — Premium Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="glass-container">
+    <div class="game-wrapper">
+        <div class="side-panel left">
+            <div class="stat-card">
+                <span class="label">SCORE</span>
+                <span id="score" class="value">00000</span>
+            </div>
+            <div class="stat-card">
+                <span class="label">LINES</span>
+                <span id="lines" class="value">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="label">LEVEL</span>
+                <span id="level" class="value">1</span>
+            </div>
+        </div>
+
+        <div class="canvas-wrapper">
+            <canvas id="tetris" width="240" height="480"></canvas>
+            <div id="game-overlay" class="overlay hidden">
+                <div class="overlay-content">
+                    <h1 id="overlay-text">PAUSED</h1>
+                    <button id="restart-btn" onclick="resetGame()">RESTART</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="side-panel right">
+            <div class="next-card">
+                <span class="label">NEXT</span>
+                <canvas id="next" width="80" height="80"></canvas>
+            </div>
+            <div class="controls-card">
+                <span class="label">CONTROLS</span>
+                <ul class="control-list">
+                    <li><span>&larr;&rarr;</span> Move</li>
+                    <li><span>&uarr;</span> Rotate</li>
+                    <li><span>&darr;</span> Soft Drop</li>
+                    <li><span>Space</span> Hard Drop</li>
+                    <li><span>P</span> Pause</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

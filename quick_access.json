@@ -1,0 +1,18 @@
+[
+    {
+        "id": "mn1wdrjxsqw4t",
+        "title": "My Github",
+        "url": "https://github.com/aytackayin?tab=repositories",
+        "icon": "git-graph",
+        "browserMode": "system",
+        "browserPath": ""
+    },
+    {
+        "id": "mn1vh99kd0wia",
+        "title": "VS Code",
+        "url": "C:\\Users\\Itouch\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe",
+        "icon": "square-pen",
+        "browserMode": "system",
+        "browserPath": ""
+    }
+]
