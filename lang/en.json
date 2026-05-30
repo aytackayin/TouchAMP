@@ -463,5 +463,20 @@
   "backup_exporting_db": "Exporting database ({x})...",
   "backup_failed": "Backup failed.",
   "backup_timeout": "Backup timed out.",
-  "backup_general_err": "Unexpected backup error: "
+  "backup_general_err": "Unexpected backup error: ",
+  "tab_update": "Update",
+  "app_update_title": "Application Update",
+  "update_check_status_title": "System Version Status",
+  "current_version": "Current Version:",
+  "latest_version": "Latest Version:",
+  "check_for_updates": "Check for Updates",
+  "new_version_available": "🎉 New Version Available!",
+  "update_now": "Update Now",
+  "release_notes": "Release Notes",
+  "up_to_date_msg": "Your TouchAMP environment is up to date!",
+  "no_updates_desc": "You are using the latest version of the application.",
+  "update_failed": "Update failed: {x}",
+  "checking_for_updates": "Checking for updates...",
+  "downloading_update": "Downloading update...",
+  "applying_update": "Applying update... Application will restart."
 }

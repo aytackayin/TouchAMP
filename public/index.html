@@ -20,7 +20,11 @@
         body.i18n-ready {
             opacity: 1;
         }
-    </style>
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="TouchAMP — Local Development Environment">
+    <meta property="og:description" content="TouchAMP Local server management panel - manage Apache, MySQL, Virtual Hosts and SSL">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="PREVIEW.png">
 </head>
 
 <body>
@@ -224,7 +228,7 @@
             <!-- ─── PROJECTS & VHOSTS ─── -->
             <div id="section-projects" class="section">
                 <div class="page-header">
-                    <h1 class="page-title" data-i18n="projects_title">Projects & Virtual Hosts</h1>
+                    <h2 class="page-title" data-i18n="projects_title">Projects & Virtual Hosts</h2>
                     <p class="page-subtitle" data-i18n="projects_subtitle">Automatic virtual hosts and SSL certificates
                         for projects in the www directory</p>
                 </div>
@@ -254,7 +258,7 @@
             <!-- ─── BACKUPS ─── -->
             <div id="section-backups" class="section">
                 <div class="page-header">
-                    <h1 class="page-title" data-i18n="backups_title">Backup List</h1>
+                    <h2 class="page-title" data-i18n="backups_title">Backup List</h2>
                     <p class="page-subtitle" data-i18n="backups_subtitle">All ZIP archives and database backups taken in
                         the system</p>
                 </div>
@@ -268,7 +272,7 @@
             <!-- ─── SETTINGS ─── -->
             <div id="section-settings" class="section">
                 <div class="page-header">
-                    <h1 class="page-title" data-i18n="settings_title">Settings</h1>
+                    <h2 class="page-title" data-i18n="settings_title">Settings</h2>
                     <p class="page-subtitle" data-i18n="settings_subtitle">Customize system folders and port settings
                         here</p>
                 </div>
@@ -284,6 +288,8 @@
                                 data-i18n="tab_cron">Scheduled Tasks</div>
                             <div class="settings-tab" data-tab="quick-access" onclick="switchSettingsTab('quick-access')"
                                 data-i18n="tab_quick_access">Quick Access</div>
+                            <div class="settings-tab" data-tab="update" onclick="switchSettingsTab('update')"
+                                data-i18n="tab_update">Update</div>
                         </div>
 
                         <!-- ═══ TAB: GENERAL ═══ -->
@@ -676,7 +682,70 @@
                                 </table>
                             </div>
                         </div>
-                        <div
+                        
+                        <!-- ═══ TAB: UPDATE ═══ -->
+                        <div id="settings-tab-update" class="settings-tab-content">
+                            <div class="settings-section-title" style="margin-left:0; margin-bottom:16px;" data-i18n="app_update_title">Application Update</div>
+                            
+                            <!-- System Version Status Card -->
+                            <div class="card" style="background: rgba(99, 102, 241, 0.03); border: 1px solid rgba(99, 102, 241, 0.15); margin-bottom: 24px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+                                    <div style="display: flex; align-items: center; gap: 16px;">
+                                        <div class="service-icon apache" style="width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: rgba(99, 102, 241, 0.1); color: var(--accent-blue-light);">
+                                            <i data-lucide="cloud-download" style="width: 24px; height: 24px;"></i>
+                                        </div>
+                                        <div>
+                                            <div style="font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;" data-i18n="update_check_status_title">System Version Status</div>
+                                            <div style="font-size: 13px; color: var(--text-secondary); display: flex; gap: 16px;">
+                                                <span><span data-i18n="current_version">Current Version:</span> <b id="update-current-version" style="color: var(--accent-blue-light);">v1.0.0</b></span>
+                                                <span id="update-latest-version-wrap" style="display: none;"><span data-i18n="latest_version">Latest Version:</span> <b id="update-latest-version" style="color: var(--accent-emerald);">v1.0.0</b></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-secondary" id="btn-check-updates" onclick="checkUpdateNow()" style="height: 38px;">
+                                        <i data-lucide="refresh-cw" style="width: 14px; height: 14px; margin-right: 6px;"></i>
+                                        <span data-i18n="check_for_updates">Check for Updates</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Update Pending / Details Panel -->
+                            <div id="update-details-panel" style="display: none;">
+                                <div class="card" style="border: 1px solid rgba(16, 185, 129, 0.2); background: rgba(16, 185, 129, 0.02); margin-bottom: 24px;">
+                                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                                        <i data-lucide="sparkles" style="color: var(--accent-emerald); width: 20px; height: 20px;"></i>
+                                        <h3 style="font-size: 16px; font-weight: 600; color: var(--accent-emerald);" data-i18n="new_version_available">New Version Available!</h3>
+                                    </div>
+                                    
+                                    <div style="margin-bottom: 20px;">
+                                        <div style="font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;" data-i18n="release_notes">Release Notes</div>
+                                        <div id="update-release-notes" class="vhosts-path" style="background: rgba(0,0,0,0.2); padding: 16px; border-radius: 8px; border: 1px solid var(--border-color); font-family: inherit; font-size: 13px; line-height: 1.6; color: var(--text-primary); max-height: 250px; overflow-y: auto; white-space: pre-wrap;">
+                                            <!-- Markdown Release notes -->
+                                        </div>
+                                    </div>
+
+                                    <div style="display: flex; justify-content: flex-end;">
+                                        <button type="button" class="btn btn-primary" id="btn-execute-update" onclick="installUpdateNow()" style="padding: 10px 24px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
+                                            <i data-lucide="download" style="width: 16px; height: 16px; margin-right: 6px;"></i>
+                                            <span data-i18n="update_now">Update Now</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- System Up-to-Date Panel -->
+                            <div id="update-up-to-date-panel" style="display: none;">
+                                <div class="card" style="border: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.01); text-align: center; padding: 40px 20px;">
+                                    <div style="width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(16, 185, 129, 0.1); color: var(--accent-emerald); margin: 0 auto 16px;">
+                                        <i data-lucide="check" style="width: 28px; height: 28px;"></i>
+                                    </div>
+                                    <h3 style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;" data-i18n="up_to_date_msg">Your TouchAMP environment is up to date!</h3>
+                                    <p style="font-size: 13px; color: var(--text-muted);" data-i18n="no_updates_desc">You are using the latest version of the application.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="settings-save-container"
                             style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
                             <button type="submit" class="btn btn-primary" data-i18n="save_settings">Save
                                 Settings</button>
@@ -688,7 +757,7 @@
             <!-- ─── DATABASE OPERATIONS ─── -->
             <div id="section-database" class="section">
                 <div class="page-header">
-                    <h1 class="page-title" data-i18n="db_ops">Database Operations</h1>
+                    <h2 class="page-title" data-i18n="db_ops">Database Operations</h2>
                     <p class="page-subtitle" data-i18n="db_ops_desc">MySQL DB management and SQL import/export tools</p>
                 </div>
 

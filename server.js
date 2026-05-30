@@ -3,7 +3,9 @@ const { spawn, exec, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const https = require('https');
 const config = require('./config');
+const pkg = require('./package.json');
 
 const app = express();
 app.use(express.json({ limit: '1024mb' }));
@@ -457,113 +459,156 @@ function isCertificateExpired(hostname) {
 
 function updateHostsFile() {
     try {
-        if (!fs.existsSync(config.WWW_DIR)) return;
-        const folders = fs.readdirSync(config.WWW_DIR, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => `${d.name}${config.VHOST_SUFFIX}`);
-        try { execSync(`attrib -s -h -r "${config.HOSTS_FILE}"`, { stdio: 'ignore', windowsHide: true }); } catch(ans) {}
-        let hostsContent = fs.readFileSync(config.HOSTS_FILE, 'utf-8'), lines = hostsContent.split(/\r?\n/);
+        if (!fs.existsSync(config.WWW_DIR)) return { changed: false };
+        const folders = fs.readdirSync(config.WWW_DIR, { withFileTypes: true })
+            .filter(d => d.isDirectory())
+            .map(d => `${d.name}${config.VHOST_SUFFIX}`);
         
-        // First clean ALL lines tagged with #sunucu-yonetici
-        // (This way, even if the suffix changes, the old ones won't remain)
-        const cleanedLines = lines.filter(line => !line.includes('#sunucu-yonetici'));
+        let hostsContent = '';
+        if (fs.existsSync(config.HOSTS_FILE)) {
+            hostsContent = fs.readFileSync(config.HOSTS_FILE, 'utf-8');
+        }
+        
+        let lines = hostsContent.split(/\r?\n/);
+        // Clean all old records containing #sunucu-yonetici
+        const cleanedLines = lines.filter(line => !line.trim().includes('#sunucu-yonetici'));
         
         let finalLines = [...cleanedLines];
+        
+        // Remove trailing empty lines to keep hosts file clean
+        while (finalLines.length > 0 && finalLines[finalLines.length - 1].trim() === '') {
+            finalLines.pop();
+        }
+        
+        // Add current active folders
         folders.forEach(hostname => {
             finalLines.push(`127.0.0.1 ${hostname} #sunucu-yonetici`);
         });
         
+        // Add a final empty line
+        finalLines.push('');
+        
         const newHostsContent = finalLines.join('\r\n');
-        if (newHostsContent.trim() === hostsContent.trim()) return; // Skip if no changes
+        if (newHostsContent.trim() === hostsContent.trim()) {
+            return { changed: false }; // Skip if no changes
+        }
         
         const tempFile = path.join(process.env.TEMP, 'hosts_temp.txt');
-        fs.writeFileSync(tempFile, newHostsContent);
-        
-        try {
-            // Try normal copy first 
-            execSync(`copy /Y "${tempFile}" "${config.HOSTS_FILE}"`, { stdio: 'ignore', windowsHide: true });
-            execSync('ipconfig /flushdns', { stdio: 'ignore', windowsHide: true });
-        } catch (e) {
-            // If normal copy fails (permission issue), try with UAC
-            // -Wait removed because it should not block server startup
-            const psCmd = `Start-Process powershell -WindowStyle Hidden -Verb RunAs -ArgumentList '-NoProfile', '-WindowStyle', 'Hidden', '-Command', 'Copy-Item -Path \"${tempFile.replace(/\\/g, '\\\\')}\" -Destination \"${config.HOSTS_FILE.replace(/\\/g, '\\\\')}\" -Force; ipconfig /flushdns'`;
-            try {
-                execSync(`powershell -WindowStyle Hidden -NoProfile -Command "${psCmd}"`, { stdio: 'ignore', windowsHide: true });
-                process.stdout.write(`  [OK] Updating Hosts (Administrator privileges requested).\n`);
-            } catch (e2) {
-                process.stdout.write(`  [!] Error: Unable to update Hosts file.\n`);
-            }
-        }
-    } catch (err) {}
+        fs.writeFileSync(tempFile, newHostsContent, 'utf-8');
+        return { changed: true, tempFile: tempFile };
+    } catch (err) {
+        return { changed: false };
+    }
 }
 
-function verifyAndTrustCerts(silent = true) {
+function verifyAndTrustCerts(silent = true, staleHostnames = [], hostsUpdateInfo = { changed: false }) {
     if (process.platform !== 'win32') return;
     try {
         if (!fs.existsSync(config.SSL_DIR)) return;
         const certFiles = fs.readdirSync(config.SSL_DIR).filter(f => f.endsWith('.crt'));
-        if (certFiles.length === 0) return;
 
-        // Windows sertifika deposunda yüklü olanları kontrol et.
-        // Konu maskesi (örn: CN=localhost veya CN=proje.test) ve Thumbprint'i bulalım veya en azından subject araması yapalım.
+        // Check currently installed certificates in Windows store
         let installedSubjects = [];
         try {
-            // Hızlı sorgu için PowerShell 
             const psScript = `Get-ChildItem Cert:\\LocalMachine\\Root | Select-Object -ExpandProperty Subject`;
             const psBase64 = Buffer.from(psScript, 'utf16le').toString('base64');
             const output = execSync(`powershell -NoProfile -EncodedCommand ${psBase64}`, { encoding: 'utf-8', windowsHide: true });
             installedSubjects = output.split('\n').filter(Boolean).map(s => s.trim().toLowerCase());
-        } catch (e) {
-            // Hata olursa (Powershell çalışmazsa vs.) bir şey yapma
-        }
+        } catch (e) {}
 
         let certsToInstall = [];
-        
         for (const file of certFiles) {
             const crtPath = path.join(config.SSL_DIR, file);
-            // Sertifika Subject'ini al (OpenSSL ile)
             let subjectStr = '';
             try {
                 const out = execSync(`"${config.OPENSSL_BIN}" x509 -noout -subject -nameopt RFC2253 -in "${crtPath}"`, { encoding: 'utf-8', windowsHide: true });
                 subjectStr = out.replace(/^subject=/, '').trim().toLowerCase();
             } catch (e) {
-                // OpenSSL hatasıysa varsayılan olarak domain adını al
                 subjectStr = 'cn=' + file.replace('.crt', '').toLowerCase();
             }
 
-            // Dosya adı veya subject store'da var mı?
             const domainToken = 'cn=' + file.replace('.crt', '').toLowerCase();
-            
             const isInstalled = installedSubjects.some(subj => subj.includes(subjectStr) || subj.includes(domainToken));
             if (!isInstalled) {
                 certsToInstall.push(crtPath);
             }
         }
 
-        if (certsToInstall.length > 0) {
-            // Write a temporary PS1 script to avoid complex escaping issues
-            const tempScriptPath = path.join(config.SSL_DIR, '_install_certs.ps1');
-            try {
-                const scriptLines = certsToInstall.map(cp => {
+        // Determine if we need to synchronize anything
+        const hasHostsChange = !!(hostsUpdateInfo && hostsUpdateInfo.changed && hostsUpdateInfo.tempFile);
+        const hasStaleCerts = staleHostnames && staleHostnames.length > 0;
+        const hasNewCerts = certsToInstall.length > 0;
+
+        if (hasHostsChange || hasStaleCerts || hasNewCerts) {
+            const tempScriptPath = path.join(config.SSL_DIR, '_sync_system.ps1');
+            const scriptLines = [];
+            scriptLines.push(`$ProgressPreference = 'SilentlyContinue'`);
+
+            // 1. Hosts file update
+            if (hasHostsChange) {
+                const safeTempFile = hostsUpdateInfo.tempFile.replace(/\\/g, '/');
+                const safeHostsFile = config.HOSTS_FILE.replace(/\\/g, '/');
+                scriptLines.push(`# Update system hosts file`);
+                scriptLines.push(`try {`);
+                scriptLines.push(`    attrib -s -h -r "${safeHostsFile}" 2>$null`);
+                scriptLines.push(`    Copy-Item -Path "${safeTempFile}" -Destination "${safeHostsFile}" -Force`);
+                scriptLines.push(`    Clear-DnsClientCache`);
+                scriptLines.push(`} catch {}`);
+            }
+
+            // 2. Remove stale certificates
+            if (hasStaleCerts) {
+                scriptLines.push(`# Remove stale certificates from Root trust store`);
+                const staleList = staleHostnames.map(sh => `'${sh.replace(/'/g, "''")}'`).join(', ');
+                scriptLines.push(`$stale = @(${staleList})`);
+                scriptLines.push(`$stale | ForEach-Object {`);
+                scriptLines.push(`    Get-ChildItem Cert:\\LocalMachine\\Root | Where-Object { $_.Subject -match "CN=$([regex]::Escape($_))\\b" } | Remove-Item -Force`);
+                scriptLines.push(`}`);
+            }
+
+            // 3. Install new certificates
+            if (hasNewCerts) {
+                scriptLines.push(`# Install new certificates to Root trust store`);
+                certsToInstall.forEach(cp => {
                     const safePath = cp.replace(/\\/g, '/');
-                    return `Import-Certificate -FilePath "${safePath}" -CertStoreLocation Cert:\\LocalMachine\\Root | Out-Null`;
+                    scriptLines.push(`Import-Certificate -FilePath "${safePath}" -CertStoreLocation Cert:\\LocalMachine\\Root | Out-Null`);
                 });
-                fs.writeFileSync(tempScriptPath, scriptLines.join('\r\n'));
-                
-                // Run the script elevated via PowerShell → Start-Process with RunAs verb
-                const escapedScript = tempScriptPath.replace(/\\/g, '\\\\');
-                execSync(
-                    `powershell -NoProfile -WindowStyle Hidden -Command "Start-Process powershell -Wait -WindowStyle Hidden -Verb RunAs -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','${escapedScript}'"`,
-                    { stdio: 'ignore', windowsHide: true, timeout: 30000 }
-                );
-                if (!silent) process.stdout.write(`  [OK] Installed ${certsToInstall.length} SSL certificate(s) to Windows trust store.\n`);
-            } catch (e) {
-                if (!silent) process.stdout.write(`  [!] Error: Unable to install missing SSL certificates to Windows trust store.\n`);
-                process.stdout.write(`  [!] SSL Trust Error: ${e.message}\n`);
+            }
+
+            try {
+                fs.writeFileSync(tempScriptPath, scriptLines.join('\r\n'), 'utf-8');
+
+                // Try direct execution first (e.g. if already running as Administrator)
+                try {
+                    execSync(`powershell -NoProfile -ExecutionPolicy Bypass -File "${tempScriptPath}"`, { stdio: 'ignore', windowsHide: true });
+                    if (!silent) {
+                        process.stdout.write(`  [OK] Direct synchronization of Hosts and SSL certificates succeeded.\n`);
+                    }
+                } catch (directErr) {
+                    // Fallback to elevated UAC execution
+                    const escapedScript = tempScriptPath.replace(/\\/g, '\\\\');
+                    execSync(
+                        `powershell -NoProfile -WindowStyle Hidden -Command "Start-Process powershell -Wait -WindowStyle Hidden -Verb RunAs -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','${escapedScript}'"`,
+                        { stdio: 'ignore', windowsHide: true, timeout: 30000 }
+                    );
+                    if (!silent) {
+                        process.stdout.write(`  [OK] Elevated synchronization of Hosts and SSL certificates succeeded (UAC completed).\n`);
+                    }
+                }
+            } catch (syncErr) {
+                if (!silent) {
+                    process.stdout.write(`  [!] Error occurred during system synchronization: ${syncErr.message}\n`);
+                }
             } finally {
+                // Cleanup temp files
                 try { if (fs.existsSync(tempScriptPath)) fs.unlinkSync(tempScriptPath); } catch(e) {}
+                if (hasHostsChange) {
+                    try { if (fs.existsSync(hostsUpdateInfo.tempFile)) fs.unlinkSync(hostsUpdateInfo.tempFile); } catch(e) {}
+                }
             }
         }
-    } catch(err) {
-        if (!silent) process.stdout.write(`  [!] Error checking/trusting certificates: ${err.message}\n`);
+    } catch (err) {
+        if (!silent) process.stdout.write(`  [!] Error in verifyAndTrustCerts: ${err.message}\n`);
     }
 }
 
@@ -583,13 +628,56 @@ function generateSSLCert(hostname) {
 function syncVhosts() {
     if (!fs.existsSync(config.WWW_DIR)) return;
     let needsRestart = false;
-    updateHostsFile();
+    
+    // 1. Scan folders to determine valid hostnames
+    const currentFolders = fs.readdirSync(config.WWW_DIR, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .map(d => d.name);
+    const validHostnames = currentFolders.map(f => `${f}${config.VHOST_SUFFIX}`);
+    
+    const staleHostnames = new Set();
 
-    // 1. Create Default Localhost Configuration (Loaded first due to 000 prefix)
+    // 2. Cleanup orphaned auto-generated vhosts
+    if (fs.existsSync(config.SITES_ENABLED_DIR)) {
+        fs.readdirSync(config.SITES_ENABLED_DIR).filter(f => f.startsWith('auto.') && f.endsWith('.conf')).forEach(file => {
+            const hostname = file.replace('auto.', '').replace('.conf', '');
+            if (!validHostnames.includes(hostname)) {
+                try {
+                    fs.unlinkSync(path.join(config.SITES_ENABLED_DIR, file));
+                    needsRestart = true;
+                } catch (e) {}
+                staleHostnames.add(hostname);
+            }
+        });
+    }
+
+    // 3. Cleanup orphaned physical SSL files
+    if (fs.existsSync(config.SSL_DIR)) {
+        fs.readdirSync(config.SSL_DIR).forEach(file => {
+            if (file.endsWith('.crt') || file.endsWith('.key') || file.endsWith('.cnf')) {
+                const ext = path.extname(file);
+                const hostname = file.replace(ext, '');
+                if (hostname !== 'localhost' && !validHostnames.includes(hostname) && !file.startsWith('_')) {
+                    try {
+                        fs.unlinkSync(path.join(config.SSL_DIR, file));
+                    } catch (e) {}
+                    staleHostnames.add(hostname);
+                }
+            }
+        });
+    }
+
+    // 4. Update hosts file (get changes info)
+    const hostsUpdateInfo = updateHostsFile();
+
+    // 5. Create Default Localhost Configuration (Loaded first due to 000 prefix)
     const defaultConfPath = path.join(config.SITES_ENABLED_DIR, '000-default.conf');
     const wwwRoot = config.WWW_DIR.replace(/\\/g, '/'), sslDir = config.SSL_DIR.replace(/\\/g, '/');
     
-    if (isCertificateExpired('localhost')) { generateSSLCert('localhost'); needsRestart = true; }
+    if (isCertificateExpired('localhost')) { 
+        generateSSLCert('localhost'); 
+        needsRestart = true; 
+    }
     
     let defaultConf = `<VirtualHost *:${config.HTTP_PORT}>\n  ServerName localhost\n  ServerAlias 127.0.0.1 ::1\n  DocumentRoot "${wwwRoot}"\n  <Directory "${wwwRoot}">\n    AllowOverride All\n    Require all granted\n    Options Indexes FollowSymLinks\n  </Directory>\n</VirtualHost>\n`;
     defaultConf += `<VirtualHost *:${config.HTTPS_PORT}>\n  ServerName localhost\n  ServerAlias 127.0.0.1 ::1\n  DocumentRoot "${wwwRoot}"\n  SSLEngine on\n  SSLCertificateFile "${sslDir}/localhost.crt"\n  SSLCertificateKeyFile "${sslDir}/localhost.key"\n  <Directory "${wwwRoot}">\n    AllowOverride All\n    Require all granted\n    Options Indexes FollowSymLinks\n  </Directory>\n</VirtualHost>\n`;
@@ -599,30 +687,18 @@ function syncVhosts() {
         needsRestart = true;
     }
 
-    // 2. Cleanup orphaned auto-generated vhosts
-    const currentFolders = fs.readdirSync(config.WWW_DIR, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name);
-    const validHostnames = currentFolders.map(f => `${f}${config.VHOST_SUFFIX}`);
-    fs.readdirSync(config.SITES_ENABLED_DIR).filter(f => f.startsWith('auto.')).forEach(file => {
-        const hostname = file.replace('auto.', '').replace('.conf', '');
-        if (!validHostnames.includes(hostname)) {
-            try {
-                fs.unlinkSync(path.join(config.SITES_ENABLED_DIR, file));
-                if (fs.existsSync(path.join(config.SSL_DIR, `${hostname}.crt`))) fs.unlinkSync(path.join(config.SSL_DIR, `${hostname}.crt`));
-                if (fs.existsSync(path.join(config.SSL_DIR, `${hostname}.key`))) fs.unlinkSync(path.join(config.SSL_DIR, `${hostname}.key`));
-                needsRestart = true;
-            } catch (e) {}
-        }
-    });
-
-    // 3. Create/Update Project Virtual Hosts
+    // 6. Create/Update Project Virtual Hosts
     currentFolders.forEach(folder => {
         const hostname = `${folder}${config.VHOST_SUFFIX}`, confPath = path.join(config.SITES_ENABLED_DIR, `auto.${hostname}.conf`);
-        if (isCertificateExpired(hostname)) { generateSSLCert(hostname); needsRestart = true; }
+        if (isCertificateExpired(hostname)) { 
+            generateSSLCert(hostname); 
+            needsRestart = true; 
+        }
         
         const projectRoot = path.join(config.WWW_DIR, folder);
         let docRoot = projectRoot;
         
-        // Laravel, Symfony vb. modern framework'ler için 'public' klasörünü otomatik algıla
+        // Auto-detect public folder for Laravel, Symfony, etc.
         if (fs.existsSync(path.join(projectRoot, 'public')) && fs.lstatSync(path.join(projectRoot, 'public')).isDirectory()) {
             docRoot = path.join(projectRoot, 'public');
         }
@@ -639,8 +715,8 @@ function syncVhosts() {
         }
     });
 
-    // Check and trust all missing certificates (batches UAC requests if needed)
-    verifyAndTrustCerts();
+    // 7. Perform unified system hosts and SSL synchronization
+    verifyAndTrustCerts(true, Array.from(staleHostnames), hostsUpdateInfo);
 
     if (needsRestart && isProcessRunning('httpd.exe') && fs.existsSync(config.APACHE_BIN)) {
         stopAllProcesses('httpd.exe');
@@ -823,6 +899,62 @@ app.post('/api/versions/add-source', (req, res) => {
 });
 
 
+const downloadUrlToFile = (fileUrl, dest, onProgress = null, cookies = []) => {
+    return new Promise((resolve, reject) => {
+        const parsedUrl = new URL(fileUrl);
+        const lib = parsedUrl.protocol === 'https:' ? require('https') : require('http');
+        const referer = `${parsedUrl.protocol}//${parsedUrl.hostname}/`;
+        const options = {
+            hostname: parsedUrl.hostname,
+            path: parsedUrl.pathname + parsedUrl.search,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Accept-Encoding': 'identity',
+                'Referer': referer,
+                'Connection': 'keep-alive'
+            }
+        };
+        // Carry cookies between redirects
+        if (cookies.length > 0) {
+            options.headers['Cookie'] = cookies.map(c => c.split(';')[0]).join('; ');
+        }
+
+        const request = lib.get(options, (response) => {
+            const newCookies = [...cookies];
+            const setCookies = response.headers['set-cookie'];
+            if (setCookies) {
+                setCookies.forEach(c => newCookies.push(c));
+            }
+
+            if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+                let redirectUrl = response.headers.location;
+                if (redirectUrl.startsWith('/')) {
+                    redirectUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}${redirectUrl}`;
+                }
+                return downloadUrlToFile(redirectUrl, dest, onProgress, newCookies).then(resolve).catch(reject);
+            }
+            if (response.statusCode !== 200) return reject(new Error('HTTP Error: ' + response.statusCode));
+            
+            const totalBytes = parseInt(response.headers['content-length'], 10);
+            let downloadedBytes = 0;
+            const file = fs.createWriteStream(dest);
+            
+            response.on('data', (chunk) => {
+                downloadedBytes += chunk.length;
+                if (onProgress && totalBytes) {
+                    onProgress(downloadedBytes, totalBytes);
+                }
+            });
+            
+            response.pipe(file);
+            file.on('finish', () => { file.close(); resolve(); });
+            file.on('error', (e) => { fs.unlink(dest, () => {}); reject(e); });
+        }).on('error', reject);
+    });
+};
+
 let downloadProgressMap = {};
 
 app.post('/api/versions/download', (req, res) => {
@@ -849,71 +981,15 @@ app.post('/api/versions/download', (req, res) => {
     const tz = tempZip.replace(/\\/g, '/');
     const tm = tmpDir.replace(/\\/g, '/');
 
-    const downloadFile = (fileUrl, dest, cookies = []) => {
-        return new Promise((resolve, reject) => {
-            const parsedUrl = new URL(fileUrl);
-            const lib = parsedUrl.protocol === 'https:' ? require('https') : require('http');
-            const referer = `${parsedUrl.protocol}//${parsedUrl.hostname}/`;
-            const options = {
-                hostname: parsedUrl.hostname,
-                path: parsedUrl.pathname + parsedUrl.search,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.5',
-                    'Accept-Encoding': 'identity',
-                    'Referer': referer,
-                    'Connection': 'keep-alive'
-                }
-            };
-            // Carry cookies between redirects (MySQL server performs session validation)
-            if (cookies.length > 0) {
-                options.headers['Cookie'] = cookies.map(c => c.split(';')[0]).join('; ');
-            }
-
-            const request = lib.get(options, (response) => {
-                // Collect new cookies
-                const newCookies = [...cookies];
-                const setCookies = response.headers['set-cookie'];
-                if (setCookies) {
-                    setCookies.forEach(c => newCookies.push(c));
-                }
-
-                if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-                    let redirectUrl = response.headers.location;
-                    // Convert relative redirects to absolute URLs
-                    if (redirectUrl.startsWith('/')) {
-                        redirectUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}${redirectUrl}`;
-                    }
-                    return downloadFile(redirectUrl, dest, newCookies).then(resolve).catch(reject);
-                }
-                if (response.statusCode !== 200) return reject(new Error('HTTP Error: ' + response.statusCode));
-                
-                const totalBytes = parseInt(response.headers['content-length'], 10);
-                let downloadedBytes = 0;
-                const file = fs.createWriteStream(dest);
-                
-                response.on('data', (chunk) => {
-                    downloadedBytes += chunk.length;
-                    if (totalBytes) {
-                        const pct = Math.round((downloadedBytes / totalBytes) * 100);
-                        const mb = (downloadedBytes / 1024 / 1024).toFixed(1);
-                        const totalMb = (totalBytes / 1024 / 1024).toFixed(1);
-                        downloadProgressMap[dlKey].progress = pct;
-                        downloadProgressMap[dlKey].message = t('downloading_mb', 'Downloading... {x} MB / {y} MB ({z}%)', { x: mb, y: totalMb, z: pct });
-                    }
-                });
-                
-                response.pipe(file);
-                file.on('finish', () => { file.close(); resolve(); });
-                file.on('error', (e) => { fs.unlink(dest, () => {}); reject(e); });
-            }).on('error', reject);
-        });
-    };
-
     (async () => {
         try {
-            await downloadFile(url, tempZip);
+            await downloadUrlToFile(url, tempZip, (downloadedBytes, totalBytes) => {
+                const pct = Math.round((downloadedBytes / totalBytes) * 100);
+                const mb = (downloadedBytes / 1024 / 1024).toFixed(1);
+                const totalMb = (totalBytes / 1024 / 1024).toFixed(1);
+                downloadProgressMap[dlKey].progress = pct;
+                downloadProgressMap[dlKey].message = t('downloading_mb', 'Downloading... {x} MB / {y} MB ({z}%)', { x: mb, y: totalMb, z: pct });
+            });
             downloadProgressMap[dlKey].status = 'extracting';
             downloadProgressMap[dlKey].message = t('extracting', 'Extracting archive, please wait. This may take a moment depending on the file size...');
 
@@ -1070,6 +1146,7 @@ app.post('/api/versions/install-local/:type/:version', (req, res) => {
 
 app.get('/api/status', (req, res) => {
     res.json({
+        appVersion: pkg.version,
         services: {
             apache: { 
                 running: isProcessRunning('httpd.exe'), 
@@ -2385,6 +2462,232 @@ app.post('/api/quick-access/move', (req, res) => {
 
     saveQuickAccess(items);
     res.json({ success: true });
+});
+
+function getLatestRelease() {
+    return new Promise((resolve, reject) => {
+        const options = {
+            hostname: 'api.github.com',
+            path: '/repos/aytackayin/TouchAMP/releases/latest',
+            headers: {
+                'User-Agent': 'TouchAMP-Updater'
+            }
+        };
+        https.get(options, (res) => {
+            if (res.statusCode !== 200) {
+                return reject(new Error('GitHub API responded with status code ' + res.statusCode));
+            }
+            let body = '';
+            res.on('data', chunk => body += chunk);
+            res.on('end', () => {
+                try {
+                    resolve(JSON.parse(body));
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        }).on('error', reject);
+    });
+}
+
+app.get('/api/update/check', async (req, res) => {
+    try {
+        const release = await getLatestRelease();
+        const latestTag = release.tag_name; // e.g. "v1.0.1"
+        const currentVersion = pkg.version; // "1.0.0"
+        
+        const latestClean = latestTag.replace(/^v/i, '');
+        const currentClean = currentVersion.replace(/^v/i, '');
+        
+        const latestParts = latestClean.split('.').map(Number);
+        const currentParts = currentClean.split('.').map(Number);
+        
+        let updateAvailable = false;
+        for (let i = 0; i < 3; i++) {
+            const l = latestParts[i] || 0;
+            const c = currentParts[i] || 0;
+            if (l > c) {
+                updateAvailable = true;
+                break;
+            } else if (l < c) {
+                break;
+            }
+        }
+        
+        const asset = release.assets.find(a => a.name.endsWith('.zip'));
+        
+        res.json({
+            success: true,
+            updateAvailable,
+            currentVersion,
+            latestVersion: latestTag,
+            description: release.body,
+            zipUrl: asset ? asset.browser_download_url : null,
+            publishedAt: release.published_at
+        });
+    } catch (err) {
+        res.json({ success: false, message: err.message });
+    }
+});
+
+app.post('/api/update/execute', async (req, res) => {
+    const { zipUrl } = req.body;
+    if (!zipUrl) return res.status(400).json({ success: false, message: 'Missing zipUrl.' });
+    
+    res.json({ success: true, message: 'Update started. The application will close, update, and restart shortly.' });
+    
+    // Process update asynchronously
+    setTimeout(async () => {
+        try {
+            // Stop all services
+            if (isProcessRunning('httpd.exe')) stopAllProcesses('httpd.exe');
+            if (isProcessRunning('mysqld.exe')) stopAllProcesses('mysqld.exe');
+            
+            for (let i = 0; i < 25; i++) {
+                if (!isProcessRunning('httpd.exe') && !isProcessRunning('mysqld.exe')) break;
+                await new Promise(r => setTimeout(r, 200));
+            }
+            
+            const tempZip = path.join(os.tmpdir(), 'touchamp-update.zip');
+            const extractPath = path.join(os.tmpdir(), 'touchamp-extracted');
+            
+            // Download update zip
+            await downloadUrlToFile(zipUrl, tempZip);
+            
+            // Write temporary PowerShell script
+            const updaterScriptPath = path.join(config.BASE_DIR, '_update_app.ps1');
+            const psScript = `
+$ProgressPreference = 'SilentlyContinue'
+Start-Sleep -Seconds 3
+
+$zipPath = '${tempZip.replace(/\\/g, '/')}'
+$extractPath = '${extractPath.replace(/\\/g, '/')}'
+$targetPath = '${config.BASE_DIR.replace(/\\/g, '/')}'
+
+try {
+    if (Test-Path $extractPath) { Remove-Item -Recurse -Force $extractPath }
+    Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+} catch {
+    exit 1
+}
+
+$binFile = Get-ChildItem -Path $extractPath -Filter 'TouchAMP.exe' -Recurse | Select-Object -First 1
+if (!$binFile) {
+    exit 1
+}
+$sourceRoot = $binFile.Directory.FullName
+
+function Copy-FilesWithExclusions($src, $dest) {
+    $excludeFolders = @('www', 'data', 'backups', 'mysql_exports', 'versions', 'ssl', 'sites-enabled')
+    $excludeFiles = @('settings.json', 'cron.json')
+    
+    Get-ChildItem -Path $src | ForEach-Object {
+        $name = $_.Name
+        $isContainer = $_.PSIsContainer
+        $destPath = Join-Path $dest $name
+        
+        if ($isContainer) {
+            if ($excludeFolders -contains $name) { return }
+            if ($name -eq 'etc') {
+                if (!(Test-Path $destPath)) { New-Item -ItemType Directory -Path $destPath -Force | Out-Null }
+                Copy-EtcSubfolders (Join-Path $src 'etc') $destPath
+                return
+            }
+            if ($name -eq 'bin') {
+                if (!(Test-Path $destPath)) { New-Item -ItemType Directory -Path $destPath -Force | Out-Null }
+                Copy-BinSubfolders (Join-Path $src 'bin') $destPath
+                return
+            }
+            if (!(Test-Path $destPath)) { New-Item -ItemType Directory -Path $destPath -Force | Out-Null }
+            Copy-FilesWithExclusions $_.FullName $destPath
+        } else {
+            if ($excludeFiles -contains $name) { return }
+            if ($name -eq 'quick_access.json' -and (Test-Path $destPath)) { return }
+            Copy-Item -Path $_.FullName -Destination $destPath -Force
+        }
+    }
+}
+
+function Copy-EtcSubfolders($src, $dest) {
+    Get-ChildItem -Path $src | ForEach-Object {
+        $name = $_.Name
+        $destPath = Join-Path $dest $name
+        if ($_.PSIsContainer) {
+            if ($name -eq 'ssl') { return }
+            if ($name -eq 'apache2') {
+                if (!(Test-Path $destPath)) { New-Item -ItemType Directory -Path $destPath -Force | Out-Null }
+                Copy-Apache2Subfolders $_.FullName $destPath
+                return
+            }
+            if (!(Test-Path $destPath)) { New-Item -ItemType Directory -Path $destPath -Force | Out-Null }
+            Copy-FilesWithExclusions $_.FullName $destPath
+        } else {
+            Copy-Item -Path $_.FullName -Destination $destPath -Force
+        }
+    }
+}
+
+function Copy-Apache2Subfolders($src, $dest) {
+    Get-ChildItem -Path $src | ForEach-Object {
+        $name = $_.Name
+        $destPath = Join-Path $dest $name
+        if ($_.PSIsContainer) {
+            if ($name -eq 'sites-enabled') { return }
+            if (!(Test-Path $destPath)) { New-Item -ItemType Directory -Path $destPath -Force | Out-Null }
+            Copy-FilesWithExclusions $_.FullName $destPath
+        } else {
+            Copy-Item -Path $_.FullName -Destination $destPath -Force
+        }
+    }
+}
+
+function Copy-BinSubfolders($src, $dest) {
+    Get-ChildItem -Path $src | ForEach-Object {
+        $name = $_.Name
+        $destPath = Join-Path $dest $name
+        if ($_.PSIsContainer) {
+            if ($name -eq 'versions') { return }
+            if (!(Test-Path $destPath)) { New-Item -ItemType Directory -Path $destPath -Force | Out-Null }
+            Copy-FilesWithExclusions $_.FullName $destPath
+        } else {
+            Copy-Item -Path $_.FullName -Destination $destPath -Force
+        }
+    }
+}
+
+Copy-FilesWithExclusions $sourceRoot $targetPath
+
+$exePath = Join-Path $targetPath 'TouchAMP.exe'
+if (Test-Path $exePath) {
+    Start-Process -FilePath $exePath -WorkingDirectory $targetPath
+}
+
+Start-Job -ScriptBlock {
+    Start-Sleep -Seconds 5
+    Remove-Item -Path $args[0] -Force
+    Remove-Item -Path $args[1] -Recurse -Force
+    Remove-Item -Path $args[2] -Force
+} -ArgumentList $zipPath, $extractPath, $MyInvocation.MyCommand.Path
+`;
+            fs.writeFileSync(updaterScriptPath, psScript, 'utf-8');
+            
+            // Execute updater script completely detached
+            const child = spawn('powershell.exe', [
+                '-NoProfile',
+                '-ExecutionPolicy', 'Bypass',
+                '-WindowStyle', 'Hidden',
+                '-File', updaterScriptPath
+            ], {
+                detached: true,
+                stdio: 'ignore',
+                cwd: config.BASE_DIR
+            });
+            child.unref();
+            process.exit(0);
+        } catch (e) {
+            process.stdout.write(`  [!] Auto-update failed: ${e.message}\\n`);
+        }
+    }, 500);
 });
 
 if (require.main === module) {

@@ -463,5 +463,20 @@
   "backup_exporting_db": "Veritabanı dışa aktarılıyor ({x})...",
   "backup_failed": "Yedekleme başarısız.",
   "backup_timeout": "Yedekleme zaman aşımına uğradı.",
-  "backup_general_err": "Beklenmeyen yedekleme hatası: "
+  "backup_general_err": "Beklenmeyen yedekleme hatası: ",
+  "tab_update": "Güncelleme",
+  "app_update_title": "Uygulama Güncellemesi",
+  "update_check_status_title": "Sistem Versiyon Durumu",
+  "current_version": "Mevcut Versiyon:",
+  "latest_version": "En Son Versiyon:",
+  "check_for_updates": "Güncellemeleri Denetle",
+  "new_version_available": "🎉 Yeni Versiyon Mevcut!",
+  "update_now": "Şimdi Güncelle",
+  "release_notes": "Sürüm Notları",
+  "up_to_date_msg": "TouchAMP ortamınız güncel!",
+  "no_updates_desc": "Uygulamanın en son sürümünü kullanıyorsunuz.",
+  "update_failed": "Güncelleme başarısız: {x}",
+  "checking_for_updates": "Güncellemeler denetleniyor...",
+  "downloading_update": "Güncelleme indiriliyor...",
+  "applying_update": "Güncelleme uygulanıyor... Uygulama yeniden başlatılacak."
 }

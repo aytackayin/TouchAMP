@@ -312,8 +312,16 @@ function switchSettingsTab(tab) {
     document.querySelectorAll('.settings-tab-content').forEach(el => {
         el.classList.toggle('active', el.id === `settings-tab-${tab}`);
     });
+    
+    // Toggle settings save button visibility
+    const saveContainer = document.getElementById('settings-save-container');
+    if (saveContainer) {
+        saveContainer.style.display = tab === 'update' ? 'none' : 'flex';
+    }
+
     if (tab === 'cron') loadCronJobs();
     if (tab === 'quick-access') loadQuickAccess();
+    if (tab === 'update') checkUpdate(true);
 }
 
 // ─── API CALLS ───
@@ -2804,4 +2812,135 @@ function openMysqlGuideModal() {
 
 function closeMysqlGuideModal() {
     document.getElementById('modal-mysql-guide').classList.remove('active');
+}
+
+let latestZipUrl = null;
+
+async function checkUpdate(silent = true) {
+    const btn = document.getElementById('btn-check-updates');
+    const originalText = btn ? btn.innerHTML : '';
+    
+    if (!silent && btn) {
+        setLoadingBtn(btn, true);
+        btn.disabled = true;
+    }
+    
+    try {
+        const data = await apiCall('/api/update/check', { silent: true });
+        
+        // Always populate current version
+        const currentVersionEl = document.getElementById('update-current-version');
+        if (currentVersionEl && data && data.currentVersion) {
+            currentVersionEl.textContent = 'v' + data.currentVersion.replace(/^v/i, '');
+        }
+
+        const latestWrap = document.getElementById('update-latest-version-wrap');
+        const latestVal = document.getElementById('update-latest-version');
+        const detailsPanel = document.getElementById('update-details-panel');
+        const upToDatePanel = document.getElementById('update-up-to-date-panel');
+        const releaseNotesEl = document.getElementById('update-release-notes');
+
+        if (data && data.success) {
+            if (latestWrap && latestVal) {
+                latestVal.textContent = data.latestVersion.startsWith('v') ? data.latestVersion : 'v' + data.latestVersion;
+                latestWrap.style.display = 'inline';
+            }
+
+            if (data.updateAvailable) {
+                latestZipUrl = data.zipUrl;
+                if (detailsPanel) detailsPanel.style.display = 'block';
+                if (upToDatePanel) upToDatePanel.style.display = 'none';
+                if (releaseNotesEl) {
+                    releaseNotesEl.textContent = data.description || '';
+                }
+                if (!silent) {
+                    showToast(t('new_version_available', '🎉 New Version Available!'), 'success');
+                }
+            } else {
+                latestZipUrl = null;
+                if (detailsPanel) detailsPanel.style.display = 'none';
+                if (upToDatePanel) upToDatePanel.style.display = 'block';
+                if (!silent) {
+                    showToast(t('up_to_date_msg', 'Your TouchAMP environment is up to date!'), 'success');
+                }
+            }
+        } else {
+            if (!silent) {
+                showToast(data ? data.message : t('conn_err', 'Connection error'), 'error');
+            }
+        }
+    } catch (err) {
+        if (!silent) {
+            showToast(err.message, 'error');
+        }
+    } finally {
+        if (!silent && btn) {
+            setLoadingBtn(btn, false);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+}
+
+function checkUpdateNow() {
+    checkUpdate(false);
+}
+
+async function installUpdateNow() {
+    if (!latestZipUrl) return;
+    
+    // Ask for final confirmation
+    const confirmed = confirm(
+        window.t ? window.t('applying_update', 'Applying update... Application will restart. Services will be stopped.') : 'Applying update... Application will restart. Services will be stopped.'
+    );
+    if (!confirmed) return;
+    
+    const btn = document.getElementById('btn-execute-update');
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) {
+        setLoadingBtn(btn, true);
+        btn.disabled = true;
+    }
+    
+    // Show full screen global loader with custom message
+    const globalLoader = document.getElementById('global-loader');
+    const loaderText = globalLoader ? globalLoader.querySelector('.loader-text') : null;
+    
+    if (globalLoader && loaderText) {
+        loaderText.textContent = t('applying_update', 'Applying update... Application will restart.');
+        globalLoader.classList.add('active');
+    }
+    
+    try {
+        const data = await apiCall('/api/update/execute', {
+            method: 'POST',
+            body: JSON.stringify({ zipUrl: latestZipUrl })
+        });
+        
+        if (data && data.success) {
+            showToast(data.message, 'success');
+            
+            // Loop reconnection or just let it close
+            setTimeout(() => {
+                // Terminate connection error overlay to allow restart
+                const connOverlay = document.getElementById('connection-error-overlay');
+                if (connOverlay) connOverlay.classList.remove('active');
+                
+                // Show a nice modal or alert that updating has run
+                alert(t('applying_update', 'Applying update... Application will restart.'));
+            }, 1000);
+        } else {
+            showToast(data ? data.message : 'Update failed', 'error');
+            if (globalLoader) globalLoader.classList.remove('active');
+        }
+    } catch (err) {
+        showToast(err.message, 'error');
+        if (globalLoader) globalLoader.classList.remove('active');
+    } finally {
+        if (btn) {
+            setLoadingBtn(btn, false);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
 }
