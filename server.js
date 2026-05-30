@@ -706,8 +706,8 @@ function syncVhosts() {
         const projectRootFormatted = projectRoot.replace(/\\/g, '/');
         const docRootFormatted = docRoot.replace(/\\/g, '/');
 
-        let vConf = `define ROOT "${projectRootFormatted}"\ndefine DOCROOT "${docRootFormatted}"\n<VirtualHost *:${config.HTTP_PORT}>\nServerName ${hostname}\nDocumentRoot "\${DOCROOT}"\n<Directory "\${DOCROOT}">\nAllowOverride All\nRequire all granted\n</Directory>\n</VirtualHost>\n`;
-        vConf += `<VirtualHost *:${config.HTTPS_PORT}>\nServerName ${hostname}\nDocumentRoot "\${DOCROOT}"\nSSLEngine on\nSSLCertificateFile "${sslDir}/${hostname}.crt"\nSSLCertificateKeyFile "${sslDir}/${hostname}.key"\n<Directory "\${DOCROOT}">\nAllowOverride All\nRequire all granted\n</Directory>\n</VirtualHost>\n`;
+        let vConf = `<VirtualHost *:${config.HTTP_PORT}>\nServerName ${hostname}\nDocumentRoot "${docRootFormatted}"\n<Directory "${docRootFormatted}">\nAllowOverride All\nRequire all granted\n</Directory>\n</VirtualHost>\n`;
+        vConf += `<VirtualHost *:${config.HTTPS_PORT}>\nServerName ${hostname}\nDocumentRoot "${docRootFormatted}"\nSSLEngine on\nSSLCertificateFile "${sslDir}/${hostname}.crt"\nSSLCertificateKeyFile "${sslDir}/${hostname}.key"\n<Directory "${docRootFormatted}">\nAllowOverride All\nRequire all granted\n</Directory>\n</VirtualHost>\n`;
 
         if (!fs.existsSync(confPath) || fs.readFileSync(confPath, 'utf-8') !== vConf) {
             fs.writeFileSync(confPath, vConf);

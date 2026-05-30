@@ -1,6 +1,6 @@
 {
   "name": "touchamp",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "TouchAMP — Local Development Environment",
   "main": "main.js",
   "scripts": {
