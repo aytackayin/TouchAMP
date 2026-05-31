@@ -507,28 +507,27 @@ function verifyAndTrustCerts(silent = true, staleHostnames = [], hostsUpdateInfo
         if (!fs.existsSync(config.SSL_DIR)) return;
         const certFiles = fs.readdirSync(config.SSL_DIR).filter(f => f.endsWith('.crt'));
 
-        // Check currently installed certificates in Windows store
-        let installedSubjects = [];
+        // Check currently installed certificates in Windows store by Thumbprint
+        let installedThumbprints = [];
         try {
-            const psScript = `Get-ChildItem Cert:\\LocalMachine\\Root | Select-Object -ExpandProperty Subject`;
+            const psScript = `Get-ChildItem Cert:\\LocalMachine\\Root, Cert:\\CurrentUser\\Root -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Thumbprint`;
             const psBase64 = Buffer.from(psScript, 'utf16le').toString('base64');
             const output = execSync(`powershell -NoProfile -EncodedCommand ${psBase64}`, { encoding: 'utf-8', windowsHide: true });
-            installedSubjects = output.split('\n').filter(Boolean).map(s => s.trim().toLowerCase());
+            installedThumbprints = output.split('\n').filter(Boolean).map(s => s.trim().toLowerCase());
         } catch (e) {}
 
         let certsToInstall = [];
         for (const file of certFiles) {
             const crtPath = path.join(config.SSL_DIR, file);
-            let subjectStr = '';
+            let localThumbprint = '';
             try {
-                const out = execSync(`"${config.OPENSSL_BIN}" x509 -noout -subject -nameopt RFC2253 -in "${crtPath}"`, { encoding: 'utf-8', windowsHide: true });
-                subjectStr = out.replace(/^subject=/, '').trim().toLowerCase();
+                const out = execSync(`"${config.OPENSSL_BIN}" x509 -noout -fingerprint -sha1 -in "${crtPath}"`, { encoding: 'utf-8', windowsHide: true });
+                localThumbprint = out.replace(/^SHA1 Fingerprint=/, '').replace(/:/g, '').trim().toLowerCase();
             } catch (e) {
-                subjectStr = 'cn=' + file.replace('.crt', '').toLowerCase();
+                localThumbprint = 'error';
             }
 
-            const domainToken = 'cn=' + file.replace('.crt', '').toLowerCase();
-            const isInstalled = installedSubjects.some(subj => subj.includes(subjectStr) || subj.includes(domainToken));
+            const isInstalled = installedThumbprints.includes(localThumbprint);
             if (!isInstalled) {
                 certsToInstall.push(crtPath);
             }
@@ -540,7 +539,7 @@ function verifyAndTrustCerts(silent = true, staleHostnames = [], hostsUpdateInfo
         const hasNewCerts = certsToInstall.length > 0;
 
         if (hasHostsChange || hasStaleCerts || hasNewCerts) {
-            const tempScriptPath = path.join(config.SSL_DIR, '_sync_system.ps1');
+            const tempScriptPath = path.join(process.env.TEMP || 'C:\\Windows\\Temp', `_sync_system_${Date.now()}.ps1`);
             const scriptLines = [];
             scriptLines.push(`$ProgressPreference = 'SilentlyContinue'`);
 
@@ -562,7 +561,7 @@ function verifyAndTrustCerts(silent = true, staleHostnames = [], hostsUpdateInfo
                 const staleList = staleHostnames.map(sh => `'${sh.replace(/'/g, "''")}'`).join(', ');
                 scriptLines.push(`$stale = @(${staleList})`);
                 scriptLines.push(`$stale | ForEach-Object {`);
-                scriptLines.push(`    Get-ChildItem Cert:\\LocalMachine\\Root | Where-Object { $_.Subject -match "CN=$([regex]::Escape($_))\\b" } | Remove-Item -Force`);
+                scriptLines.push(`    Get-ChildItem Cert:\\LocalMachine\\Root, Cert:\\CurrentUser\\Root -ErrorAction SilentlyContinue | Where-Object { $_.Subject -match "CN=$([regex]::Escape($_))\\b" } | Remove-Item -Force`);
                 scriptLines.push(`}`);
             }
 
@@ -570,8 +569,12 @@ function verifyAndTrustCerts(silent = true, staleHostnames = [], hostsUpdateInfo
             if (hasNewCerts) {
                 scriptLines.push(`# Install new certificates to Root trust store`);
                 certsToInstall.forEach(cp => {
-                    const safePath = cp.replace(/\\/g, '/');
-                    scriptLines.push(`Import-Certificate -FilePath "${safePath}" -CertStoreLocation Cert:\\LocalMachine\\Root | Out-Null`);
+                    const safePath = cp.replace(/\//g, '\\');
+                    const file = path.basename(cp);
+                    const domain = file.replace('.crt', '');
+                    // Clear any old/conflicting certificate for this exact domain first to avoid conflicts!
+                    scriptLines.push(`Get-ChildItem Cert:\\LocalMachine\\Root, Cert:\\CurrentUser\\Root -ErrorAction SilentlyContinue | Where-Object { $_.Subject -match "CN=$([regex]::Escape('${domain}'))\\b" } | Remove-Item -Force`);
+                    scriptLines.push(`certutil.exe -addstore -f root "${safePath}"`);
                 });
             }
 
@@ -614,8 +617,22 @@ function verifyAndTrustCerts(silent = true, staleHostnames = [], hostsUpdateInfo
 
 function generateSSLCert(hostname) {
     const sslDir = config.SSL_DIR, confFile = path.join(sslDir, `${hostname}.cnf`);
-    const cnf = `[req]\ndefault_bits=2048\ndistinguished_name=dn\nx509_extensions=v3_req\nprompt=no\n[dn]\nCN=${hostname}\n[v3_req]\nsubjectAltName=DNS:${hostname},DNS:*.${hostname},IP:127.0.0.1\n`;
-    fs.writeFileSync(confFile, cnf);
+    const cnf = `[req]
+default_bits=2048
+distinguished_name=dn
+x509_extensions=v3_req
+prompt=no
+
+[dn]
+CN=${hostname}
+
+[v3_req]
+basicConstraints=critical,CA:true
+keyUsage=critical,keyCertSign,digitalSignature
+extendedKeyUsage=serverAuth
+subjectAltName=DNS:${hostname},DNS:*.${hostname},IP:127.0.0.1
+`;
+    fs.writeFileSync(confFile, cnf, 'utf-8');
     try {
         const keyFile = path.join(sslDir, `${hostname}.key`), crtFile = path.join(sslDir, `${hostname}.crt`);
         if (fs.existsSync(crtFile)) fs.unlinkSync(crtFile);
@@ -2692,7 +2709,9 @@ Start-Job -ScriptBlock {
 
 if (require.main === module) {
     initializeEnvironment();
-    syncVhosts();
+    if (config.AUTO_START_SERVICES) {
+        syncVhosts();
+    }
     app.listen(config.APP_PORT, '0.0.0.0', () => {
         process.stdout.write(`\n  TouchAMP PANEL: http://localhost:${config.APP_PORT}\n\n`);
         
