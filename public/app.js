@@ -1,6 +1,6 @@
-// ══════════════════════════════════════════════════════════
-// TouchAMP — Frontend Application
-// ══════════════════════════════════════════════════════════
+﻿// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// TouchAMP â€” Frontend Application
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 const API = '';
 let pollInterval = null;
@@ -21,7 +21,7 @@ function getDynamicUrl(protocol, hostname, path = '') {
     return `${protocol}://${hostname}${portStr}${path}`;
 }
 
-// ─── SIDEBAR TOGGLE FOR MOBILE ───
+// â”€â”€â”€ SIDEBAR TOGGLE FOR MOBILE â”€â”€â”€
 function toggleSidebar() {
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.getElementById('sidebar-overlay');
@@ -72,7 +72,7 @@ window.addEventListener('orientationchange', function() {
     }, 100);
 });
 
-// ─── INITIALIZATION ───
+// â”€â”€â”€ INITIALIZATION â”€â”€â”€
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize lucide icons for the entire page (including mobile header)
     if (window.lucide) {
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // ─── CUSTOM CONTEXT MENU ───
+    // â”€â”€â”€ CUSTOM CONTEXT MENU â”€â”€â”€
     const contextMenuHtml = `
         <div id="touchamp-context-menu" class="custom-context-menu"></div>
     `;
@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.lastTargetInput = null;
 
     window.addEventListener('contextmenu', (e) => {
-        e.preventDefault(); // Varsayılan tarayıcı / Electron sağ tık menüsünü engelle
+        e.preventDefault(); // VarsayÄ±lan tarayÄ±cÄ± / Electron saÄŸ tÄ±k menÃ¼sÃ¼nÃ¼ engelle
         
         window.lastTargetInput = null;
         const isInput = ['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable;
@@ -136,11 +136,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <i data-lucide="copy" style="width:14px;height:14px;opacity:0.8;"></i> <span>${currentLangData.copy || 'Kopyala'}</span>
                 </div>
                 <div class="context-menu-item" onmousedown="event.preventDefault(); window.handleMenuPaste(event)">
-                    <i data-lucide="clipboard-paste" style="width:14px;height:14px;opacity:0.8;"></i> <span>${currentLangData.paste || 'Yapıştır'}</span>
+                    <i data-lucide="clipboard-paste" style="width:14px;height:14px;opacity:0.8;"></i> <span>${currentLangData.paste || 'YapÄ±ÅŸtÄ±r'}</span>
                 </div>
                 <div class="context-menu-separator"></div>
                 <div class="context-menu-item" onmousedown="event.preventDefault(); window.handleMenuAction('select_all')">
-                    <i data-lucide="scan-line" style="width:14px;height:14px;opacity:0.8;"></i> <span>${currentLangData.select_all || 'Tümünü Seç'}</span>
+                    <i data-lucide="scan-line" style="width:14px;height:14px;opacity:0.8;"></i> <span>${currentLangData.select_all || 'TÃ¼mÃ¼nÃ¼ SeÃ§'}</span>
                 </div>
             `;
         } else {
@@ -183,7 +183,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.handleMenuAction = function(action) {
         if (!window.lastTargetInput) return;
         
-        // Focus kaybını onmousedown ile engelledik ancak emin olmak için focusluyoruz
+        // Focus kaybÄ±nÄ± onmousedown ile engelledik ancak emin olmak iÃ§in focusluyoruz
         window.lastTargetInput.focus();
         
         if (action === 'select_all') {
@@ -213,7 +213,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 });
 
-// ─── LANGUAGE ENGINE ───
+// â”€â”€â”€ LANGUAGE ENGINE â”€â”€â”€
 async function loadLanguageList() {
     const data = await apiCall('/api/languages');
     if (data && data.success) {
@@ -262,7 +262,7 @@ function applyTranslations() {
 }
 
 
-// ─── NAVIGATION ───
+// â”€â”€â”€ NAVIGATION â”€â”€â”€
 
 function initNavigation() {
     document.querySelectorAll('.nav-item[data-section]').forEach(item => {
@@ -324,7 +324,7 @@ function switchSettingsTab(tab) {
     if (tab === 'update') checkUpdate(true);
 }
 
-// ─── API CALLS ───
+// â”€â”€â”€ API CALLS â”€â”€â”€
 
 function showLoader() {
     const loader = document.getElementById('global-loader');
@@ -403,7 +403,7 @@ async function apiCall(url, options = {}, showLoading = false, timeoutMs = 30000
     }
 }
 
-// ─── SERVICE STATUS ───
+// â”€â”€â”€ SERVICE STATUS â”€â”€â”€
 
 async function refreshStatus() {
     const data = await apiCall('/api/status', { silent: true });
@@ -533,7 +533,7 @@ function startPolling() {
     }, 4000);
 }
 
-// ─── SERVICE CONTROLS ───
+// â”€â”€â”€ SERVICE CONTROLS â”€â”€â”€
 
 async function startService(name, btn) {
     if (!btn) btn = event.target.closest('.btn');
@@ -615,7 +615,7 @@ async function stopAll(btn) {
     }
 }
 
-// ─── PROJECTS & VHOSTS ───
+// â”€â”€â”€ PROJECTS & VHOSTS â”€â”€â”€
 
 async function loadProjects() {
     const data = await apiCall('/api/projects');
@@ -645,6 +645,12 @@ async function loadProjects() {
             </div>
             
             <div class="vhost-actions">
+                <button type="button" class="btn btn-secondary btn-sm" title="${t('deploy_settings', 'Deploy Settings')}" data-i18n-attr="title|deploy_settings" style="border-color: rgba(99, 102, 241, 0.3); color: var(--accent-blue-light); padding: 6px 10px;" data-project="${escapeAttr(proj.name)}" onclick="openDeploySettingsModalFromData(this)">
+                    <i data-lucide="settings" style="width: 14px; height: 14px;"></i>
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" title="${t('deploy_to_hosting', 'Upload to Hosting')}" data-i18n-attr="title|deploy_to_hosting" style="border-color: rgba(16, 185, 129, 0.3); color: var(--accent-emerald); padding: 6px 10px;" data-project="${escapeAttr(proj.name)}" onclick="openDeployConfirmModalFromData(this)">
+                    <i data-lucide="cloud-upload" style="width: 14px; height: 14px;"></i>
+                </button>
                 <button type="button" class="btn btn-secondary btn-sm" title="${t('open_folder', 'Open Folder')}" data-i18n-attr="title|open_folder" style="border-color: rgba(59, 130, 246, 0.3); color: var(--accent-blue-light); padding: 6px 10px;" onclick="openProjectFolder('${proj.name}')">
                     <i data-lucide="folder-open" style="width: 14px; height: 14px;"></i>
                 </button>
@@ -687,9 +693,9 @@ async function syncNow() {
     }
 }
 
-// ─── SETTINGS ───
+// â”€â”€â”€ SETTINGS â”€â”€â”€
 
-// ─── SETTINGS ───
+// â”€â”€â”€ SETTINGS â”€â”€â”€
 
 function openVersionModal() {
     document.getElementById('modal-version').classList.add('active');
@@ -953,7 +959,7 @@ async function saveSettings() {
     }
 }
 
-// ─── LOGS MANAGEMENT ───
+// â”€â”€â”€ LOGS MANAGEMENT â”€â”€â”€
 
 async function viewLogs(type) {
     const btn = event.target.closest('.btn');
@@ -1027,7 +1033,7 @@ function closeLogModal() {
     document.getElementById('modal-log').classList.remove('active');
 }
 
-// ─── TOAST NOTIFICATIONS ───
+// â”€â”€â”€ TOAST NOTIFICATIONS â”€â”€â”€
 
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
@@ -1054,7 +1060,7 @@ function showToast(message, type = 'info') {
     }, 4000);
 }
 
-// ─── CONFIRMATION MODAL ───
+// â”€â”€â”€ CONFIRMATION MODAL â”€â”€â”€
 let confirmCallback = null;
 
 function openConfirmModal(message, callback, buttonText = t('btn_yes', 'Yes'), isDanger = true) {
@@ -1088,7 +1094,7 @@ function executeConfirmAction() {
     closeConfirmModal();
 }
 
-// ─── BACKUP MANAGEMENT (LIST & ACTIONS) ───
+// â”€â”€â”€ BACKUP MANAGEMENT (LIST & ACTIONS) â”€â”€â”€
 
 async function loadBackups() {
     const data = await apiCall('/api/backups');
@@ -1112,7 +1118,7 @@ async function loadBackups() {
                 <div class="vhost-icon"><i data-lucide="package" style="width: 20px; height: 20px;"></i></div>
                 <div>
                     <div class="vhost-name">${b.filename}</div>
-                    <div class="vhost-path" style="opacity: 0.6;">${b.size} — ${b.date}</div>
+                    <div class="vhost-path" style="opacity: 0.6;">${b.size} â€” ${b.date}</div>
                 </div>
             </div>
             <div class="vhost-actions">
@@ -1141,7 +1147,7 @@ function deleteBackup(filename) {
     }, t('btn_yes_delete', 'Yes, Delete'), true);
 }
 
-// ─── RESTORE PROCESS ───
+// â”€â”€â”€ RESTORE PROCESS â”€â”€â”€
 let projectList = [];
 let currentRestoreFilename = '';
 
@@ -1229,7 +1235,7 @@ async function executeRestore(type, target, eraseTarget, restoreDb) {
     }
 }
 
-// ─── BACKUP MODAL (CREATE) ───
+// â”€â”€â”€ BACKUP MODAL (CREATE) â”€â”€â”€
 let currentBackupProjectName = '';
 let currentBackupProjectPath = '';
 let backupPollInterval = null;
@@ -1360,7 +1366,7 @@ async function executeBackup() {
                 pc.style.display = 'none';
                 showToast(status.message || t('backup_failed', 'Backup failed.'), 'error');
             }
-        } catch(e) { /* network glitch — keep polling */ }
+        } catch(e) { /* network glitch â€” keep polling */ }
     }, 1500);
 
     // Safety timeout (10 minutes)
@@ -1375,7 +1381,7 @@ async function executeBackup() {
     }, 600000);
 }
 
-// ─── HELPERS ───
+// â”€â”€â”€ HELPERS â”€â”€â”€
 
 function setLoadingBtn(btn, loading) {
     if (!btn) return;
@@ -1420,7 +1426,7 @@ function setLoadingBtn(btn, loading) {
     }
 }
 
-// ─── CUSTOM SELECT (PREMIUM UI) ───
+// â”€â”€â”€ CUSTOM SELECT (PREMIUM UI) â”€â”€â”€
 
 function initCustomSelect(selectId) {
     const originalSelect = document.getElementById(selectId);
@@ -1445,7 +1451,7 @@ function initCustomSelect(selectId) {
 
     const arrow = document.createElement('span');
     arrow.className = 'custom-select-arrow';
-    arrow.innerHTML = '▼';
+    arrow.innerHTML = 'â–¼';
 
     customSelect.appendChild(selectedText);
     customSelect.appendChild(arrow);
@@ -1520,7 +1526,7 @@ document.addEventListener('click', () => {
     document.querySelectorAll('.custom-select').forEach(el => el.classList.remove('active'));
 });
 
-// ─── PHP CONFIGURATION MANAGEMENT ───
+// â”€â”€â”€ PHP CONFIGURATION MANAGEMENT â”€â”€â”€
 
 let phpExtensionsData = [];
 let phpSettingsData = [];
@@ -1772,7 +1778,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// ─── GIT CLONE MODAL ───
+// â”€â”€â”€ GIT CLONE MODAL â”€â”€â”€
 
 function openCloneModal() {
     document.getElementById('modal-clone').classList.add('active');
@@ -1964,7 +1970,7 @@ async function executeRename() {
     }
 }
 
-// ─── DATABASE OPERATIONS ───
+// â”€â”€â”€ DATABASE OPERATIONS â”€â”€â”€
 
 let lastDbListStr = "";
 let lastDbStatus = true;
@@ -2119,7 +2125,7 @@ async function loadDatabaseTables() {
     if (window.lucide) lucide.createIcons();
 }
 
-// ─── TOOLTIP SYSTEM ───
+// â”€â”€â”€ TOOLTIP SYSTEM â”€â”€â”€
 
 let tooltipEl = null;
 
@@ -2203,7 +2209,7 @@ function updateTooltipPosition(x, y) {
 // Initialize on load
 initGlobalTooltips();
 
-// ─── DATABASE ACTIONS ───
+// â”€â”€â”€ DATABASE ACTIONS â”€â”€â”€
 
 function openCreateDbModal() {
     document.getElementById('modal-create-db').classList.add('active');
@@ -2393,7 +2399,7 @@ function doActualSqlImport(db, file) {
 }
 
 
-// ─── TABLE ACTIONS ───
+// â”€â”€â”€ TABLE ACTIONS â”€â”€â”€
 
 function truncateTable(db, table) {
     const msg = t('confirm_truncate_table_msg', 'All data in table "{x}" will be cleared (TRUNCATE). This cannot be undone. Are you sure?').replace('{x}', table);
@@ -2407,7 +2413,7 @@ function truncateTable(db, table) {
         } else if (data) {
             showToast(data.message, 'error');
         }
-    }, t('btn_yes_truncate', '🧹 Clear'), true);
+    }, t('btn_yes_truncate', 'ğŸ§¹ Clear'), true);
 }
 
 function deleteTable(db, table) {
@@ -2430,7 +2436,7 @@ function exportTable(db, table) {
     window.location.href = `/api/mysql/export?db=${encodeURIComponent(db)}&table=${encodeURIComponent(table)}`;
 }
 
-// ─── BULK TABLE ACTIONS ───
+// â”€â”€â”€ BULK TABLE ACTIONS â”€â”€â”€
 
 function toggleAllTables(checkbox) {
     const cbs = document.querySelectorAll('.table-cb');
@@ -2485,7 +2491,7 @@ function bulkDeleteTables() {
     }, t('btn_bulk_delete', 'Delete Selected'), true);
 }
 
-// ─── CRON SCHEDULED TASKS ───
+// â”€â”€â”€ CRON SCHEDULED TASKS â”€â”€â”€
 
 async function loadCronJobs() {
     const data = await apiCall('/api/cron');
@@ -2516,7 +2522,7 @@ async function loadCronJobs() {
                         <div class="vhost-name">${job.name}</div>
                         <div class="vhost-path" style="opacity: 0.6; font-family: 'JetBrains Mono', monospace; font-size: 12px;">
                             <span style="color: var(--accent-blue-light);">${job.schedule}</span>
-                            <span style="margin: 0 6px; opacity: 0.4;">→</span>
+                            <span style="margin: 0 6px; opacity: 0.4;">â†’</span>
                             ${job.command}
                         </div>
                     </div>
@@ -2619,7 +2625,7 @@ async function openProjectUrl(url) {
     await openUrlInBrowser(url);
 }
 
-// ─── QUICK ACCESS MANAGEMENT ───
+// â”€â”€â”€ QUICK ACCESS MANAGEMENT â”€â”€â”€
 
 async function loadQuickAccess() {
     const data = await apiCall('/api/quick-access');
@@ -2854,7 +2860,7 @@ async function checkUpdate(silent = true) {
                     releaseNotesEl.textContent = data.description || '';
                 }
                 if (!silent) {
-                    showToast(t('new_version_available', '🎉 New Version Available!'), 'success');
+                    showToast(t('new_version_available', 'ğŸ‰ New Version Available!'), 'success');
                 }
             } else {
                 latestZipUrl = null;
@@ -2943,4 +2949,685 @@ async function installUpdateNow() {
             btn.disabled = false;
         }
     }
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// DEPLOY TO HOSTING (FTP/FTPS + Remote MySQL)
+// Mapping model: from (project) â†’ to (hosting) rules.
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+let deployState = {
+    project: '',
+    config: null,
+    excludeSet: new Set(),
+    loadedDirs: new Set()
+};
+let deployPollInterval = null;
+let currentDeployTaskId = null;
+
+function posixRel(p) {
+    return String(p || '').replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+}
+
+function pathExcluded(relPath) {
+    relPath = posixRel(relPath);
+    if (!relPath) return false;
+    if (deployState.excludeSet.has(relPath)) return true;
+    const parts = relPath.split('/');
+    for (let i = 1; i < parts.length; i++) {
+        if (deployState.excludeSet.has(parts.slice(0, i).join('/'))) return true;
+    }
+    return false;
+}
+
+function excludedAncestor(relPath) {
+    relPath = posixRel(relPath);
+    const parts = relPath.split('/');
+    for (let i = 1; i < parts.length; i++) {
+        const cand = parts.slice(0, i).join('/');
+        if (deployState.excludeSet.has(cand)) return cand;
+    }
+    return '';
+}
+
+function escapeAttr(s) {
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+// â”€â”€â”€ BUTTON WRAPPERS (data-project attribute) â”€â”€â”€
+
+function openDeploySettingsModalFromData(btn) {
+    openDeploySettingsModal(btn.getAttribute('data-project') || '');
+}
+function openDeployConfirmModalFromData(btn) {
+    openDeployConfirmModal(btn.getAttribute('data-project') || '');
+}
+
+// â”€â”€â”€ SETTINGS MODAL â”€â”€â”€
+
+async function openDeploySettingsModal(project) {
+    deployState.project = project;
+    deployState.loadedDirs = new Set();
+
+    document.getElementById('deploy-settings-project').value = project;
+    document.getElementById('deploy-settings-proj').innerText = project;
+    document.getElementById('deploy-run-project').value = project;
+
+    const data = await apiCall(`/api/deploy/config?project=${encodeURIComponent(project)}`);
+    if (!data || !data.success) { showToast((data && data.message) || t('conn_err', 'Connection error'), 'error'); return; }
+    deployState.config = data.config;
+    deployState.excludeSet = new Set((data.config.exclude || []).map(posixRel));
+
+    switchDeployTab('mappings');
+    renderMappings();
+    renderExcludeChips();
+    loadExcludeTreeRoot();
+    populateConnection(data.config);
+    renderLastUpload(data.config);
+
+    document.getElementById('modal-deploy-settings').classList.add('active');
+    if (window.lucide) lucide.createIcons();
+    applyTranslations();
+}
+
+function closeDeploySettingsModal() {
+    document.getElementById('modal-deploy-settings').classList.remove('active');
+}
+
+function switchDeployTab(tab) {
+    document.querySelectorAll('.settings-tab[data-deploytab]').forEach(el => {
+        el.classList.toggle('active', el.dataset.deploytab === tab);
+    });
+    document.querySelectorAll('[id^="deploy-tab-"]').forEach(el => {
+        el.classList.toggle('active', el.id === `deploy-tab-${tab}`);
+    });
+    if (window.lucide) lucide.createIcons();
+}
+
+// â”€â”€â”€ TAB 1: MAPPINGS â”€â”€â”€
+
+function renderMappings() {
+    const wrap = document.getElementById('deploy-mappings-list');
+    const mappings = (deployState.config && deployState.config.mappings) || [];
+    if (mappings.length === 0) {
+        wrap.innerHTML = `<div style="color: var(--text-muted); padding: 20px; text-align: center;">${t('deploy_no_mappings', 'No mapping rules yet. Click <b>Add Rule</b> to pick a file or folder.')}</div>`;
+        return;
+    }
+    wrap.innerHTML = mappings.map((m, i) => {
+        const isFolder = m.type === 'folder';
+        const icon = isFolder ? 'folder' : 'file';
+        const from = escapeAttr(m.from || '');
+        const to = escapeAttr(m.to || '');
+        return `
+        <div class="deploy-mapping-row" data-idx="${i}" style="display:flex; align-items:center; gap:8px; padding: 10px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px;">
+            <div style="display:flex; flex-direction:column; gap:2px;">
+                <button type="button" class="btn btn-secondary btn-sm" style="padding:2px 6px; line-height:1;" onclick="moveMapping(${i}, -1)" ${i === 0 ? 'disabled' : ''} title="${t('deploy_move_up', 'Move up')}"><i data-lucide="chevron-up" style="width:12px;height:12px;"></i></button>
+                <button type="button" class="btn btn-secondary btn-sm" style="padding:2px 6px; line-height:1;" onclick="moveMapping(${i}, 1)" ${i === mappings.length - 1 ? 'disabled' : ''} title="${t('deploy_move_down', 'Move down')}"><i data-lucide="chevron-down" style="width:12px;height:12px;"></i></button>
+            </div>
+            <i data-lucide="${icon}" style="width:16px;height:16px;color:${isFolder ? 'var(--accent-blue-light)' : 'var(--text-muted)'}; flex-shrink:0;"></i>
+            <input type="text" class="form-input deploy-mapping-from" data-idx="${i}" value="${from}" placeholder="e.g. public" style="flex:1; font-family:'JetBrains Mono',monospace; font-size:12px;" onchange="updateMappingFrom(${i}, this.value)">
+            <i data-lucide="arrow-right" style="width:14px;height:14px; color:var(--text-muted); flex-shrink:0;"></i>
+            <input type="text" class="form-input deploy-mapping-to" data-idx="${i}" value="${to}" placeholder="remote target (e.g. public_html)" style="flex:1; font-family:'JetBrains Mono',monospace; font-size:12px;" onchange="updateMappingTo(${i}, this.value)">
+            <button type="button" class="btn btn-danger-outline btn-sm" style="padding: 6px 10px;" onclick="removeMapping(${i})" title="${t('deploy_remove_rule', 'Remove')}">
+                <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i>
+            </button>
+        </div>`;
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+    applyTranslations();
+}
+
+function addMapping(from, type) {
+    if (!deployState.config) deployState.config = { mappings: [], exclude: [], ftp: {}, mysql: {} };
+    if (!Array.isArray(deployState.config.mappings)) deployState.config.mappings = [];
+    if (deployState.config.mappings.some(m => m.from === from && m.type === type)) {
+        showToast(t('deploy_rule_exists', 'This rule already exists.'), 'info');
+        return;
+    }
+    const defaultTo = type === 'folder' ? suggestDefaultFolderTarget(from) : suggestDefaultFileTarget(from);
+    deployState.config.mappings.push({ from, to: defaultTo, type });
+    renderMappings();
+}
+
+function suggestDefaultFolderTarget(from) {
+    // e.g. 'public' -> 'public', 'app' -> 'app' (caller will type the real remote path)
+    return from;
+}
+
+function suggestDefaultFileTarget(from) {
+    const base = from.split('/').pop();
+    return base;
+}
+
+function removeMapping(i) {
+    if (!deployState.config || !deployState.config.mappings) return;
+    deployState.config.mappings.splice(i, 1);
+    renderMappings();
+}
+
+function moveMapping(i, dir) {
+    if (!deployState.config || !deployState.config.mappings) return;
+    const arr = deployState.config.mappings;
+    const j = i + dir;
+    if (j < 0 || j >= arr.length) return;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    renderMappings();
+}
+
+function updateMappingFrom(i, value) {
+    if (!deployState.config || !deployState.config.mappings) return;
+    deployState.config.mappings[i].from = String(value || '').trim();
+}
+
+function updateMappingTo(i, value) {
+    if (!deployState.config || !deployState.config.mappings) return;
+    deployState.config.mappings[i].to = String(value || '').trim();
+}
+
+function addMappingFromInput() {
+    const input = document.getElementById('deploy-mapping-manual-from');
+    const from = posixRel(input.value.trim());
+    if (!from) return;
+    addMapping(from, 'file');
+    input.value = '';
+}
+
+// â”€â”€â”€ SOURCE PICKER (tree to select from for new mapping) â”€â”€â”€
+
+let pickerState = { dir: '', selected: null };
+
+function openMappingSourcePicker() {
+    pickerState = { dir: '', selected: null };
+    document.getElementById('deploy-picker-selected-from').value = '';
+    document.getElementById('deploy-picker-type').value = 'file';
+    document.getElementById('deploy-picker-new-to').value = '';
+    document.getElementById('deploy-picker-subtitle').textContent = deployState.project;
+    loadPickerFolder();
+    document.getElementById('modal-mapping-picker').classList.add('active');
+    if (window.lucide) lucide.createIcons();
+    applyTranslations();
+}
+
+function closeMappingSourcePicker() {
+    document.getElementById('modal-mapping-picker').classList.remove('active');
+}
+
+function setPickerSource(src) {
+    // Only "project" source is supported now; settings/files was removed.
+    // The dropdown is hidden in the UI but keep this for safety.
+    pickerState.dir = '';
+    document.getElementById('deploy-picker-subtitle').textContent = deployState.project;
+    loadPickerFolder();
+}
+
+async function loadPickerFolder() {
+    const wrap = document.getElementById('deploy-picker-tree');
+    const project = deployState.project;
+    const params = new URLSearchParams({ project, dir: pickerState.dir });
+    const data = await apiCall(`/api/deploy/tree?${params.toString()}`);
+    const entries = (data && data.success) ? data.entries : [];
+    if (entries.length === 0) {
+        wrap.innerHTML = `<div style="color:var(--text-muted); padding:16px; text-align:center; font-size:12px;">${t('deploy_picker_empty', 'Empty folder.')}</div>`;
+        return;
+    }
+    wrap.innerHTML = entries.map(e => {
+        const isDir = e.type === 'dir';
+        return `
+        <div class="deploy-picker-row" data-path="${escapeAttr(e.path)}" data-type="${e.type}" style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer;">
+            ${isDir ? `<span class="deploy-picker-toggle" style="width:16px;display:inline-flex;justify-content:center;"><i data-lucide="chevron-right" style="width:14px;height:14px;"></i></span>` : `<span style="width:16px;display:inline-block;"></span>`}
+            <i data-lucide="${isDir ? 'folder' : 'file'}" style="width:15px;height:15px;color:${isDir ? 'var(--accent-blue-light)' : 'var(--text-muted)'};"></i>
+            <span style="flex:1; font-size:13px;">${escapeHtml(e.name)}</span>
+            ${isDir ? `<button type="button" class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:11px;" data-picker-select="${escapeAttr(e.path)}" data-picker-type="folder">${t('deploy_picker_select', 'Select')}</button>` : `<button type="button" class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:11px;" data-picker-select="${escapeAttr(e.path)}" data-picker-type="file">${t('deploy_picker_select', 'Select')}</button>`}
+        </div>
+        <div class="deploy-picker-children" data-dir="${escapeAttr(e.path)}" style="display:none; margin-left: 20px; border-left: 1px dashed rgba(255,255,255,0.06); padding-left: 6px;"></div>`;
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+    // Delegated click handlers
+    wrap.querySelectorAll('[data-picker-select]').forEach(btn => {
+        btn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            const path = btn.getAttribute('data-picker-select');
+            const type = btn.getAttribute('data-picker-type');
+            selectPickerItem(path, type);
+        });
+    });
+    wrap.querySelectorAll('.deploy-picker-row').forEach(row => {
+        row.addEventListener('click', (ev) => {
+            if (ev.target.closest('[data-picker-select]')) return;
+            const type = row.getAttribute('data-type');
+            if (type === 'dir') togglePickerDir(row);
+            else selectPickerItem(row.getAttribute('data-path'), 'file');
+        });
+    });
+    applyTranslations();
+}
+
+async function togglePickerDir(rowEl) {
+    const childrenWrap = rowEl.nextElementSibling;
+    const dir = childrenWrap.getAttribute('data-dir');
+    if (!dir || !childrenWrap.classList.contains('deploy-picker-children')) return;
+    const isOpen = childrenWrap.style.display !== 'none';
+    const icon = rowEl.querySelector('.deploy-picker-toggle i');
+    if (isOpen) {
+        childrenWrap.style.display = 'none';
+        if (icon) icon.setAttribute('data-lucide', 'chevron-right');
+    } else {
+        childrenWrap.style.display = 'block';
+        if (icon) icon.setAttribute('data-lucide', 'chevron-down');
+        if (!childrenWrap.dataset.loaded) {
+            childrenWrap.innerHTML = `<div style="padding:6px; color:var(--text-muted); font-size:12px;">${t('loading', 'Loading...')}</div>`;
+            const oldDir = pickerState.dir;
+            pickerState.dir = dir;
+            const project = deployState.project;
+            const params = new URLSearchParams({ project, dir });
+            const data = await apiCall(`/api/deploy/tree?${params.toString()}`);
+            pickerState.dir = oldDir;
+            const entries = (data && data.success) ? data.entries : [];
+            if (entries.length === 0) {
+                childrenWrap.innerHTML = `<div style="color:var(--text-muted); padding:6px; font-size:12px;">${t('deploy_picker_empty', 'Empty folder.')}</div>`;
+            } else {
+                childrenWrap.innerHTML = entries.map(e => {
+                    const isDir = e.type === 'dir';
+                    return `
+                    <div class="deploy-picker-row" data-path="${escapeAttr(e.path)}" data-type="${e.type}" style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer;">
+                        ${isDir ? `<span class="deploy-picker-toggle" style="width:16px;display:inline-flex;justify-content:center;"><i data-lucide="chevron-right" style="width:14px;height:14px;"></i></span>` : `<span style="width:16px;display:inline-block;"></span>`}
+                        <i data-lucide="${isDir ? 'folder' : 'file'}" style="width:14px;height:14px;color:${isDir ? 'var(--accent-blue-light)' : 'var(--text-muted)'};"></i>
+                        <span style="flex:1; font-size:13px;">${escapeHtml(e.name)}</span>
+                        ${isDir ? `<button type="button" class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:10px;" data-picker-select="${escapeAttr(e.path)}" data-picker-type="folder">${t('deploy_picker_select', 'Select')}</button>` : `<button type="button" class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:10px;" data-picker-select="${escapeAttr(e.path)}" data-picker-type="file">${t('deploy_picker_select', 'Select')}</button>`}
+                    </div>
+                    <div class="deploy-picker-children" data-dir="${escapeAttr(e.path)}" style="display:none; margin-left: 20px; border-left: 1px dashed rgba(255,255,255,0.06); padding-left: 6px;"></div>`;
+                }).join('');
+                childrenWrap.querySelectorAll('[data-picker-select]').forEach(btn => {
+                    btn.addEventListener('click', (ev) => { ev.stopPropagation(); selectPickerItem(btn.getAttribute('data-picker-select'), btn.getAttribute('data-picker-type')); });
+                });
+                childrenWrap.querySelectorAll('.deploy-picker-row').forEach(row => {
+                    row.addEventListener('click', (ev) => {
+                        if (ev.target.closest('[data-picker-select]')) return;
+                        const type = row.getAttribute('data-type');
+                        if (type === 'dir') togglePickerDir(row);
+                        else selectPickerItem(row.getAttribute('data-path'), 'file');
+                    });
+                });
+            }
+            childrenWrap.dataset.loaded = '1';
+            if (window.lucide) lucide.createIcons();
+            applyTranslations();
+        }
+    }
+    if (window.lucide) lucide.createIcons();
+}
+
+function selectPickerItem(path, type) {
+    // path is already project-relative (returned by the project tree API)
+    pickerState.selected = { path, type };
+    document.getElementById('deploy-picker-selected-from').value = path;
+    document.getElementById('deploy-picker-type').value = type;
+    const suggested = type === 'folder' ? suggestDefaultFolderTarget(path) : suggestDefaultFileTarget(path);
+    document.getElementById('deploy-picker-new-to').value = suggested;
+    if (window.lucide) lucide.createIcons();
+}
+
+function confirmMappingFromPicker() {
+    if (!pickerState.selected) { showToast(t('deploy_picker_no_selection', 'Please select a file or folder first.'), 'error'); return; }
+    const { path, type } = pickerState.selected;
+    const to = document.getElementById('deploy-picker-new-to').value.trim() || (type === 'folder' ? suggestDefaultFolderTarget(path) : suggestDefaultFileTarget(path));
+    // Add directly with the custom `to`
+    if (!deployState.config) deployState.config = { mappings: [], exclude: [], ftp: {}, mysql: {} };
+    if (!Array.isArray(deployState.config.mappings)) deployState.config.mappings = [];
+    if (deployState.config.mappings.some(m => m.from === path && m.type === type)) {
+        showToast(t('deploy_rule_exists', 'This rule already exists.'), 'info');
+        return;
+    }
+    deployState.config.mappings.push({ from: path, to, type });
+    renderMappings();
+    closeMappingSourcePicker();
+}
+
+// â”€â”€â”€ TAB 2: EXCLUSIONS â”€â”€â”€
+
+function loadExcludeTreeRoot() {
+    const tree = document.getElementById('deploy-exclude-tree');
+    tree.innerHTML = '';
+    renderTreeChildren('', tree);
+}
+
+async function renderTreeChildren(relDir, container) {
+    const project = deployState.project;
+    const params = new URLSearchParams({ project, dir: relDir });
+    const data = await apiCall(`/api/deploy/tree?${params.toString()}`);
+    const entries = (data && data.success) ? data.entries : [];
+    if (entries.length === 0 && !relDir) {
+        container.innerHTML = `<div class="empty-state" style="padding: 20px; text-align:center;">${t('no_proj_desc', 'No files found.')}</div>`;
+        return;
+    }
+    container.innerHTML = entries.map(e => renderTreeNode(e)).join('');
+    if (window.lucide) lucide.createIcons();
+}
+
+function renderTreeNode(entry) {
+    const isDir = entry.type === 'dir';
+    const checked = pathExcluded(entry.path);
+    const ancestor = excludedAncestor(entry.path);
+    const disabled = !!ancestor;
+    const icon = isDir ? 'folder' : 'file';
+    return `
+        <div class="deploy-tree-node" data-path="${escapeAttr(entry.path)}" data-isdir="${isDir ? 1 : 0}">
+            <div class="deploy-tree-row">
+                <span class="deploy-tree-toggle" style="visibility:${isDir ? 'visible' : 'hidden'};" onclick="toggleTreeNode(this)">
+                    <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
+                </span>
+                <label class="form-checkbox deploy-tree-check" style="display:flex; align-items:center; gap:6px; margin:0; cursor:${disabled ? 'not-allowed' : 'pointer'};" data-ancestor="${escapeAttr(ancestor)}">
+                    <input type="checkbox" class="table-cb deploy-exclude-cb" data-path="${escapeAttr(entry.path)}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''} onchange="onExcludeCheck(this)">
+                    <i data-lucide="${icon}" style="width:15px;height:15px;color:${isDir ? 'var(--accent-blue-light)' : 'var(--text-muted)'};"></i>
+                    <span class="deploy-tree-label">${escapeHtml(entry.name)}</span>
+                </label>
+            </div>
+            <div class="deploy-tree-children" ${isDir ? `data-dir="${escapeAttr(entry.path)}"` : ''} style="display:none;"></div>
+        </div>`;
+}
+
+async function toggleTreeNode(toggleEl) {
+    const node = toggleEl.closest('.deploy-tree-node');
+    const childrenWrap = node.querySelector('.deploy-tree-children');
+    const dir = childrenWrap.getAttribute('data-dir');
+    const isOpen = childrenWrap.style.display !== 'none';
+    const icon = toggleEl.querySelector('i');
+    if (isOpen) {
+        childrenWrap.style.display = 'none';
+        if (icon) icon.setAttribute('data-lucide', 'chevron-right');
+    } else {
+        childrenWrap.style.display = 'block';
+        if (icon) icon.setAttribute('data-lucide', 'chevron-down');
+        if (dir && !deployState.loadedDirs.has(dir)) {
+            childrenWrap.innerHTML = `<div style="padding:6px 8px; color:var(--text-muted); font-size:12px;">${t('loading', 'Loading...')}</div>`;
+            await renderTreeChildren(dir, childrenWrap);
+            deployState.loadedDirs.add(dir);
+        }
+    }
+    if (window.lucide) lucide.createIcons();
+}
+
+function onExcludeCheck(cb) {
+    const p = posixRel(cb.dataset.path);
+    if (cb.checked) deployState.excludeSet.add(p);
+    else deployState.excludeSet.delete(p);
+    refreshTreeCheckStates();
+    renderExcludeChips();
+}
+
+function refreshTreeCheckStates() {
+    document.querySelectorAll('.deploy-exclude-cb').forEach(cb => {
+        const p = posixRel(cb.dataset.path);
+        const ancestor = excludedAncestor(p);
+        cb.checked = pathExcluded(p);
+        cb.disabled = !!ancestor;
+        const label = cb.closest('.deploy-tree-check');
+        if (label) label.style.cursor = ancestor ? 'not-allowed' : 'pointer';
+    });
+}
+
+function addManualExclude() {
+    const input = document.getElementById('deploy-exclude-manual');
+    const val = posixRel(input.value.trim());
+    if (!val) return;
+    deployState.excludeSet.add(val);
+    input.value = '';
+    refreshTreeCheckStates();
+    renderExcludeChips();
+}
+
+function renderExcludeChips() {
+    const wrap = document.getElementById('deploy-exclude-chips');
+    const items = Array.from(deployState.excludeSet).sort();
+    if (items.length === 0) { wrap.innerHTML = ''; return; }
+    wrap.innerHTML = items.map(p => `
+        <span class="deploy-chip" title="${escapeAttr(p)}" data-exclude-path="${escapeAttr(p)}">
+            <i data-lucide="${p && p.indexOf('.') < 0 ? 'folder' : 'file'}" style="width:12px;height:12px;"></i>
+            <span>${escapeHtml(p)}</span>
+            <i data-lucide="x" class="deploy-chip-remove" style="width:13px;height:13px;cursor:pointer;"></i>
+        </span>`).join('');
+    wrap.querySelectorAll('.deploy-chip-remove').forEach(el => {
+        el.addEventListener('click', (e) => {
+            const chip = e.currentTarget.closest('.deploy-chip');
+            const p = chip && chip.getAttribute('data-exclude-path');
+            if (p) removeExclude(p);
+        });
+    });
+    if (window.lucide) lucide.createIcons();
+}
+
+function removeExclude(p) {
+    deployState.excludeSet.delete(posixRel(p));
+    refreshTreeCheckStates();
+    renderExcludeChips();
+}
+
+// â”€â”€â”€ TAB 3: CONNECTION â”€â”€â”€
+
+function populateConnection(cfg) {
+    const F = cfg.ftp || {};
+    document.getElementById('deploy-ftp-host').value = F.host || '';
+    document.getElementById('deploy-ftp-port').value = F.port || 21;
+    document.getElementById('deploy-ftp-user').value = F.user || '';
+    document.getElementById('deploy-ftp-pass').value = F.password || '';
+    document.getElementById('deploy-ftp-secure').checked = !!F.secure;
+
+    const M = cfg.mysql || {};
+    document.getElementById('deploy-mysql-enabled').checked = !!M.enabled;
+    document.getElementById('deploy-mysql-host').value = M.host || '';
+    document.getElementById('deploy-mysql-port').value = M.port || 3306;
+    document.getElementById('deploy-mysql-user').value = M.user || '';
+    document.getElementById('deploy-mysql-pass').value = M.password || '';
+    document.getElementById('deploy-mysql-remotedb').value = M.remoteDb || '';
+    toggleDeployMysql();
+    loadDeployLocalDbs(M.localDb || '');
+}
+
+async function loadDeployLocalDbs(preferred) {
+    const sel = document.getElementById('deploy-mysql-localdb');
+    const data = await apiCall('/api/mysql/db-list');
+    sel.innerHTML = `<option value="">${t('select_db', 'Select a database...')}</option>`;
+    if (data && data.success && data.databases) {
+        data.databases.forEach(db => {
+            sel.innerHTML += `<option value="${escapeAttr(db)}" ${db === preferred ? 'selected' : ''}>${escapeHtml(db)}</option>`;
+        });
+    }
+    setTimeout(() => { if (typeof initCustomSelect === 'function') initCustomSelect('deploy-mysql-localdb'); }, 30);
+}
+
+function toggleDeployMysql() {
+    const enabled = document.getElementById('deploy-mysql-enabled').checked;
+    document.getElementById('deploy-mysql-fields').style.display = enabled ? 'block' : 'none';
+}
+
+function readConnectionFields() {
+    return {
+        ftp: {
+            host: document.getElementById('deploy-ftp-host').value.trim(),
+            port: parseInt(document.getElementById('deploy-ftp-port').value, 10) || 21,
+            user: document.getElementById('deploy-ftp-user').value.trim(),
+            password: document.getElementById('deploy-ftp-pass').value,
+            secure: document.getElementById('deploy-ftp-secure').checked
+        },
+        mysql: {
+            enabled: document.getElementById('deploy-mysql-enabled').checked,
+            host: document.getElementById('deploy-mysql-host').value.trim(),
+            port: parseInt(document.getElementById('deploy-mysql-port').value, 10) || 3306,
+            user: document.getElementById('deploy-mysql-user').value.trim(),
+            password: document.getElementById('deploy-mysql-pass').value,
+            remoteDb: document.getElementById('deploy-mysql-remotedb').value.trim(),
+            localDb: document.getElementById('deploy-mysql-localdb').value
+        }
+    };
+}
+
+function renderLastUpload(cfg) {
+    const el = document.getElementById('deploy-last-upload-info');
+    if (cfg && cfg.lastUpload) {
+        el.innerHTML = `<i data-lucide="clock" style="width:11px;height:11px;vertical-align:middle;"></i> ${t('deploy_last_upload', 'Last upload')}: <b>${new Date(cfg.lastUpload).toLocaleString()}</b>`;
+    } else {
+        el.innerHTML = `<i data-lucide="clock" style="width:11px;height:11px;vertical-align:middle;"></i> ${t('deploy_never_uploaded', 'Never uploaded yet')}`;
+    }
+    if (window.lucide) lucide.createIcons();
+}
+
+// â”€â”€â”€ SAVE â”€â”€â”€
+
+async function saveDeploySettings() {
+    const project = deployState.project;
+    const conn = readConnectionFields();
+    const btn = document.getElementById('btn-save-deploy');
+    setLoadingBtn(btn, true);
+
+    const data = await apiCall('/api/deploy/config', {
+        method: 'POST',
+        body: JSON.stringify({
+            project,
+            config: {
+                mappings: deployState.config && deployState.config.mappings,
+                exclude: Array.from(deployState.excludeSet),
+                ftp: conn.ftp,
+                mysql: conn.mysql
+            }
+        })
+    });
+
+    setLoadingBtn(btn, false);
+
+    if (data && data.success) {
+        showToast(data.message || t('settings_updated', 'Settings updated.'), 'success');
+        if (deployState.config) {
+            deployState.config.mappings = deployState.config.mappings;
+            deployState.config.exclude = Array.from(deployState.excludeSet);
+            deployState.config.ftp = conn.ftp;
+            deployState.config.mysql = conn.mysql;
+        }
+    } else if (data) {
+        showToast(data.message, 'error');
+    }
+}
+
+// â”€â”€â”€ TEST CONNECTIONS â”€â”€â”€
+
+async function testFtpConnection(btn) {
+    const conn = readConnectionFields();
+    if (!conn.ftp.host || !conn.ftp.user) { showToast(t('deploy_ftp_required', 'Host and user are required.'), 'error'); return; }
+    setLoadingBtn(btn, true);
+    const data = await apiCall('/api/deploy/test-ftp', { method: 'POST', body: JSON.stringify({ ftp: conn.ftp }) });
+    setLoadingBtn(btn, false);
+    showToast(data ? data.message : t('conn_err', 'Connection error'), data && data.success ? 'success' : 'error');
+}
+
+async function testMysqlConnection(btn) {
+    const conn = readConnectionFields();
+    if (!conn.mysql.host || !conn.mysql.user) { showToast(t('deploy_mysql_required', 'Host and user are required.'), 'error'); return; }
+    setLoadingBtn(btn, true);
+    const data = await apiCall('/api/deploy/test-mysql', { method: 'POST', body: JSON.stringify({ mysql: conn.mysql }) });
+    setLoadingBtn(btn, false);
+    showToast(data ? data.message : t('conn_err', 'Connection error'), data && data.success ? 'success' : 'error');
+}
+
+// â”€â”€â”€ DEPLOY RUN â”€â”€â”€
+
+async function openDeployConfirmModal(project) {
+    deployState.project = project;
+    document.getElementById('deploy-run-project').value = project;
+    document.getElementById('deploy-run-proj').innerText = project;
+
+    const data = await apiCall(`/api/deploy/config?project=${encodeURIComponent(project)}`);
+    if (!data || !data.success) { showToast((data && data.message) || t('conn_err', 'Connection error'), 'error'); return; }
+    deployState.config = data.config;
+
+    const warnings = [];
+    const F = data.config.ftp || {};
+    if (!F.host || !F.user) warnings.push(`<div style="color: var(--accent-rose); font-size: 13px; margin-bottom: 8px;"><i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>${t('deploy_no_ftp_warn', 'FTP is not configured. Open Deploy Settings first.')}</div>`);
+    const mappings = data.config.mappings || [];
+    if (mappings.length === 0) warnings.push(`<div style="color: var(--accent-rose); font-size: 13px; margin-bottom: 8px;"><i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>${t('deploy_no_mappings_warn', 'No mapping rules defined. Add at least one rule.')}</div>`);
+    const warnBox = document.getElementById('deploy-run-warnings');
+    warnBox.innerHTML = warnings.join('');
+    warnBox.style.display = warnings.length ? 'block' : 'none';
+
+    const startBtn = document.getElementById('btn-start-deploy');
+    startBtn.disabled = warnings.length > 0;
+
+    document.getElementById('deploy-run-confirm').style.display = 'block';
+    document.getElementById('deploy-run-progress').style.display = 'none';
+    document.getElementById('deploy-progress-fill').style.width = '0%';
+    document.getElementById('deploy-progress-text').textContent = '';
+
+    document.getElementById('modal-deploy-run').classList.add('active');
+    if (window.lucide) lucide.createIcons();
+    applyTranslations();
+}
+
+function closeDeployRunModal() {
+    document.getElementById('modal-deploy-run').classList.remove('active');
+    if (deployPollInterval) { clearInterval(deployPollInterval); deployPollInterval = null; }
+    currentDeployTaskId = null;
+    const btn = document.getElementById('btn-start-deploy');
+    if (btn && btn.getAttribute('data-loading') === 'true') setLoadingBtn(btn, false);
+}
+
+async function executeDeploy() {
+    const project = document.getElementById('deploy-run-project').value;
+    const fullSync = document.getElementById('deploy-full-sync').checked;
+
+    const btn = document.getElementById('btn-start-deploy');
+    setLoadingBtn(btn, true);
+    document.getElementById('deploy-run-confirm').style.display = 'none';
+    document.getElementById('deploy-run-progress').style.display = 'block';
+    document.getElementById('deploy-progress-fill').style.width = '0%';
+    document.getElementById('deploy-progress-text').textContent = t('backup_starting', 'Starting...');
+
+    const data = await apiCall('/api/deploy/start', {
+        method: 'POST',
+        body: JSON.stringify({ project, fullSync })
+    });
+
+    if (!data || !data.success || !data.taskId) {
+        setLoadingBtn(btn, false);
+        document.getElementById('deploy-run-confirm').style.display = 'block';
+        document.getElementById('deploy-run-progress').style.display = 'none';
+        if (data) showToast(data.message, 'error');
+        return;
+    }
+
+    const taskId = data.taskId;
+    currentDeployTaskId = taskId;
+    if (deployPollInterval) clearInterval(deployPollInterval);
+    deployPollInterval = setInterval(async () => {
+        try {
+            const resp = await fetch(`/api/deploy/status/${taskId}`);
+            const status = await resp.json();
+            if (!status) return;
+            const bar = document.getElementById('deploy-progress-fill');
+            const txt = document.getElementById('deploy-progress-text');
+            if (bar) bar.style.width = (status.progress || 0) + '%';
+            if (txt) txt.textContent = status.message || '';
+
+            if (status.status === 'done') {
+                clearInterval(deployPollInterval); deployPollInterval = null;
+                setLoadingBtn(btn, false);
+                showToast(status.message, 'success');
+                setTimeout(() => closeDeployRunModal(), 1500);
+            } else if (status.status === 'error' || status.status === 'not_found') {
+                clearInterval(deployPollInterval); deployPollInterval = null;
+                setLoadingBtn(btn, false);
+                if (status.status === 'error') showToast(status.message, 'error');
+            }
+        } catch (e) {}
+    }, 1200);
+}
+
+async function cancelDeploy() {
+    if (!currentDeployTaskId) return;
+    const btn = document.getElementById('btn-cancel-deploy');
+    if (btn) setLoadingBtn(btn, true);
+    await apiCall('/api/deploy/cancel/' + currentDeployTaskId, { method: 'POST' });
+    if (btn) setLoadingBtn(btn, false);
 }

@@ -1,32 +1,32 @@
-# 🚀 TouchAMP v1.0.0 - Initial Release
+# 🚀 TouchAMP v1.0.5
 
-Welcome to the first official release of **TouchAMP**! 🎉  
-TouchAMP is a high-performance, portable, and visually stunning local development environment (WAMP alternative) built with Node.js and Electron. It allows developers to manage Apache, PHP, and MySQL with ease, offering a "one-click" experience for local web development.
+## ✨ What's New in v1.0.5 — Deploy to Hosting (FTP/FTPS + Remote MySQL)
 
-## ✨ Key Features in v1.0.0
+A new one-click **Deploy to Hosting** feature for every project in `www/`. Configure mappings, exclusions, FTP/FTPS and remote MySQL — then upload changed files with a single click.
 
-- **🚀 Portable & Lightweight**: Run your environment from any folder or USB drive. Perfect for developers on the go.
-- **🛠️ Service Management**: One-click control for Apache, PHP, and MySQL. Start, stop, and configure services seamlessly.
-- **🌐 Auto Virtual Hosts**: Automatically creates `.test` domains for subfolders in the `www/` directory without manual configuration.
-- **🔒 Automatic SSL (HTTPS)**: Generates and handles SSL certificates automatically for your local `.test` domains.
-- **🔄 Smart Multi-PHP**: Easily switch between different PHP versions and manage PHP extensions globally or per-project.
-- **📦 Integrated Backup System**: Automated SQL and file backup/restore with high-speed ZIP compression, ensuring your local projects are safe.
-- **⚡ Quick Access Sidebar**: Quick links for localhost, phpMyAdmin, and custom shortcuts (folders, websites, executables).
-- **⏰ Scheduled Tasks**: Built-in cron-like task runner for database backups or custom scripts (Node, PHP, Batch).
-- **📂 {APP} Dynamic Path Support**: Fully dynamic and portable settings resolving system paths across different machines.
-- **🛡️ Secure UAC Handling**: Automatically requests administrator privileges to securely manage system hosts and Background services.
-- **🌍 Bilingual Interface**: Full support for English and Turkish out of the box with an extensible `/lang` setup.
-- **💻 Premium UI/UX**: An eye-catching dark mode, glassmorphism design, and smooth animations powered by Lucide icons and the Inter font.
+### 🆕 Deploy to Hosting (Mapping Rules)
+- **Per-project Deploy Settings** — every project has its own settings (stored inside the project folder at `<project>/.touchamp/deploy.json`).
+- **Settings button + Upload button** on each project card. The settings gear opens the deploy modal; the cloud-upload button deploys in one click.
+- **3-tab settings modal**:
+  1. **Mapping Rules** — define rules `from (project) → to (hosting)`. Each rule has a `from` (file or folder), a target path, and a type. Add, remove, and reorder rules (order matters — first match wins). Use a tree-based picker to select sources.
+  2. **Exclusions** — select files/folders to never upload (e.g. `.env`, local-only files). The exclusion tree is fully manual — nothing is hidden or auto-excluded.
+  3. **FTP / FTPS & MySQL** — host, port, user, password, FTPS toggle, optional TLS-strict mode. Remote MySQL: host, port, user, password, remote DB name, local DB source, "update database" enable.
+- **Folder → folder mapping** (e.g. `app` → `noykozmetik/app` keeps the directory structure). **File → path** or **file → folder** (drop into a folder keeping its name).
+- **Incremental uploads** — only files changed since the last successful deploy are uploaded. Detected via `git status` if the project has a `.git` directory, otherwise by file mtime. "Full upload" option forces re-upload of everything.
+- **Automatic remote DB backup** before the import (stored under `backups/deploy/`). The remote DB must exist on the hosting first; the import replaces shared tables and keeps remote-only tables.
+- **Server-side cancel** — the in-progress deploy can be cancelled (Cancel button in the progress view).
+- **Security** — strict remote DB name validation, no shell in MySQL dump/import (uses `spawn` + `defaults-extra-file`), `..` segments clamped in remote paths, FTPS cert verification is opt-in per project.
 
-## 🛠️ Portability Notice
-To keep the core application lightweight and truly portable, service binaries (Apache, MySQL, PHP) are **not included** by default. 
-To install them:
-1. Open TouchAMP and go to the **Settings > Services** tab.
-2. Click **"How to install?"** next to each service for an easy guide.
-3. Once downloaded, use the **"Service Version Install"** button to attach them to your portable environment.
+### 🛠️ Backup System — Shared-Hosting-Friendly SQL Export
+- The `mysqldump` output is now post-processed to strip statements that shared-hosting MySQL often rejects (binary-log toggles, GTID state, transactional wrappers, dump-completed comments, etc.). The result resembles a phpMyAdmin export and imports cleanly on most providers.
+
+### 🔧 Other Changes
+- Settings, exclude rules and the deploy modal are fully under user control — **no automatic file filtering**. Nothing is hidden from the tree or auto-skipped at upload time.
+- The deploy config is now per-project (`<project>/.touchamp/deploy.json`) so each project ships its own deploy setup.
+- Migrated, hardened and tested: pickers, modal tabs, exclude tree, MySQL dump streaming, change detection, cancel flow.
 
 ## 📥 Download Instructions
-Download the `TouchAMP_v1.0.0-win32-x64.zip` file below, extract it anywhere on your Windows PC, and double click `TouchAMP.exe` to launch the magic!
+Download the `TouchAMP_v1.0.5-win32-x64.zip` file below, extract it anywhere on your Windows PC, and double click `TouchAMP.exe` to launch.
 
 ---
 *Developed with ❤️ by Aytaç KAYIN.*

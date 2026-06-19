@@ -2910,3 +2910,102 @@ body.sidebar-open {
         min-height: 44px;
     }
 }
+
+/* ══════════════════════════════════════
+   DEPLOY TO HOSTING — File Tree & Chips
+   ══════════════════════════════════════ */
+
+.deploy-tree {
+    font-size: 13px;
+}
+
+.deploy-tree-node {
+    user-select: none;
+}
+
+.deploy-tree-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 4px;
+    border-radius: 6px;
+    transition: background var(--transition-fast, 0.15s);
+}
+
+.deploy-tree-row:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.deploy-tree-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.deploy-tree-toggle:hover {
+    color: var(--text-primary);
+}
+
+.deploy-tree-check {
+    flex: 1;
+    min-width: 0;
+}
+
+.deploy-tree-label {
+    font-size: 13px;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.deploy-tree-children {
+    margin-left: 16px;
+    border-left: 1px dashed rgba(255, 255, 255, 0.06);
+    padding-left: 4px;
+}
+
+.deploy-mapping-row:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.deploy-mapping-row .btn[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.deploy-picker-row:hover {
+    background: rgba(99, 102, 241, 0.08);
+}
+
+.deploy-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 8px 5px 10px;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--accent-rose);
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1;
+}
+
+.deploy-chip i[data-lucide="x"]:hover {
+    color: var(--text-primary);
+}
+
+.deploy-dest-input {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+#deploy-tab-files .empty-state,
+#deploy-tab-exclude .empty-state {
+    color: var(--text-muted);
+}

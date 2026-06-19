@@ -6,6 +6,7 @@ const os = require('os');
 const https = require('https');
 const config = require('./config');
 const pkg = require('./package.json');
+const deploy = require('./deploy');
 
 const app = express();
 app.use(express.json({ limit: '1024mb' }));
@@ -432,6 +433,46 @@ function initializeEnvironment(silent = false) {
 function getSources() {
     if (!fs.existsSync(SOURCES_FILE)) return { php: {}, apache: {}, mysql: {} };
     try { return JSON.parse(fs.readFileSync(SOURCES_FILE, 'utf-8')); } catch(e) { return { php: {}, apache: {}, mysql: {} }; }
+}
+
+// Strip mysqldump output of statements that shared-hosting MySQL often rejects
+// (binary-log toggles, GTID state, transactional wrappers, dump-completed comments).
+// The result resembles a phpMyAdmin export and imports cleanly on most providers.
+const DUMP_DROP_PATTERNS = [
+    /^SET\s+@@SESSION\.SQL_LOG_BIN/i,
+    /^SET\s+@MYSQLDUMP_TEMP_LOG_BIN/i,
+    /^SET\s+@@GLOBAL\.GTID_PURGED/i,
+    /^SET\s+@@SESSION\.SQL_LOG_BIN\s*=\s*@MYSQLDUMP_TEMP_LOG_BIN/i,
+    /^SET\s+@@SESSION\.SQL_LOG_BIN\s*=\s*\d/i,
+    /^\/\*!40103\s+SET\s+TIME_ZONE/i,
+    /^START\s+TRANSACTION\s*;?$/i,
+    /^COMMIT\s*;?$/i,
+    /^--\s*Dump completed on/i,
+    /^--\s*GTID\s+state\s+at\s+the\s+beginning/i
+];
+const DUMP_DROP_LINE_COMMENT = /^--\s*$/;
+
+function stripMysqlDumpNoise(text) {
+    const lines = text.split(/\r?\n/);
+    const out = [];
+    let inGtidBlock = false;
+    for (const raw of lines) {
+        const line = raw.replace(/\s+$/, '');
+        if (inGtidBlock) {
+            if (/^SET\s+@@GLOBAL\.GTID_PURGED\s*=/i.test(line) || /^\s*'\s*'\s*;?\s*$/.test(line)) {
+                inGtidBlock = false;
+                continue;
+            }
+            continue;
+        }
+        if (/^--\s*GTID\s+state\s+at/i.test(line)) { inGtidBlock = true; continue; }
+        let drop = false;
+        for (const p of DUMP_DROP_PATTERNS) { if (p.test(line)) { drop = true; break; } }
+        if (drop) continue;
+        if (DUMP_DROP_LINE_COMMENT.test(line)) continue;
+        out.push(line);
+    }
+    return out.join('\n');
 }
 
 function isProcessRunning(name) {
@@ -1751,8 +1792,14 @@ app.post('/api/backup', (req, res) => {
                         timeout: 300000
                     });
 
-                    if (dumpOutput && dumpOutput.trim().length > 0) {
-                        fs.writeFileSync(sqlFile, dumpOutput, 'utf-8');
+                    // Strip mysqldump output of statements that shared-hosting MySQL
+                    // often rejects (binary-log toggles, GTID state, transactional
+                    // wrappers, dump-completed comments). The result resembles a
+                    // phpMyAdmin export and imports cleanly on most providers.
+                    const cleaned = stripMysqlDumpNoise(dumpOutput);
+
+                    if (cleaned && cleaned.trim().length > 0) {
+                        fs.writeFileSync(sqlFile, cleaned, 'utf-8');
                     } else {
                         throw new Error('mysqldump returned empty output');
                     }
@@ -2706,6 +2753,9 @@ Start-Job -ScriptBlock {
         }
     }, 500);
 });
+
+// ─── DEPLOY TO HOSTING (FTP/FTPS + Remote MySQL) ROUTES ───
+deploy.registerRoutes(app, config, t);
 
 if (require.main === module) {
     initializeEnvironment();

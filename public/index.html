@@ -1503,6 +1503,264 @@
         </div>
     </div>
 
+    <!-- ═══ DEPLOY SETTINGS MODAL (3 tabs) ═══ -->
+    <div class="modal-overlay" id="modal-deploy-settings">
+        <div class="modal" style="max-width: 720px; padding: 28px;">
+            <div class="modal-header" style="margin-bottom: 16px;">
+                <div class="modal-title" style="font-size: 18px;"><i data-lucide="cloud-upload"
+                        style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-blue-light);"></i>
+                    <span data-i18n="deploy_settings_title">Deploy Settings</span>
+                    <span id="deploy-settings-proj" style="color: var(--accent-emerald); font-weight: 700; margin-left: 6px;"></span>
+                </div>
+                <button class="modal-close" onclick="closeDeploySettingsModal()">✕</button>
+            </div>
+
+            <input type="hidden" id="deploy-settings-project">
+
+            <div class="settings-tabs" style="margin-bottom: 16px;">
+                <div class="settings-tab active" data-deploytab="mappings" onclick="switchDeployTab('mappings')"
+                    data-i18n="deploy_tab_mappings">Mapping Rules</div>
+                <div class="settings-tab" data-deploytab="exclude" onclick="switchDeployTab('exclude')"
+                    data-i18n="deploy_tab_exclude">Exclusions</div>
+                <div class="settings-tab" data-deploytab="connection" onclick="switchDeployTab('connection')"
+                    data-i18n="deploy_tab_connection">FTP &amp; MySQL</div>
+            </div>
+
+            <!-- ═══ TAB: MAPPINGS ═══ -->
+            <div id="deploy-tab-mappings" class="settings-tab-content active">
+                <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;"
+                    data-i18n="deploy_mappings_desc">
+                    Define rules to send local files/folders to specific remote locations. Use the picker to select a source from the project tree (or from the <b>settings/files</b> folder for hosting-ready overrides). Rules are applied in order — first match wins.
+                </p>
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <button type="button" class="btn btn-secondary" onclick="openMappingSourcePicker()">
+                        <i data-lucide="plus" style="width: 14px; height: 14px; margin-right: 6px;"></i>
+                        <span data-i18n="deploy_add_rule">Add Rule</span>
+                    </button>
+                    <input type="text" class="form-input" id="deploy-mapping-manual-from" placeholder="e.g. public or settings/files/.env"
+                        data-i18n-attr="placeholder|deploy_mapping_manual_from_ph" style="flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 12px;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addMappingFromInput()">
+                        <i data-lucide="plus" style="width: 12px; height: 12px; margin-right: 4px;"></i>
+                        <span data-i18n="add">Add</span>
+                    </button>
+                </div>
+                <div id="deploy-mappings-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow-y: auto; padding-right: 4px;">
+                    <div style="color: var(--text-muted); padding: 20px; text-align: center;" data-i18n="deploy_no_mappings">
+                        No mapping rules yet. Click <b>Add Rule</b> to pick a file or folder.
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ TAB: EXCLUDE ═══ -->
+            <div id="deploy-tab-exclude" class="settings-tab-content">
+                <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;"
+                    data-i18n="deploy_exclude_desc">
+                    Select files and folders that must <b>never</b> be uploaded via FTP (e.g. <code style="background: rgba(99,102,241,0.15); padding: 1px 5px; border-radius: 4px;">.env</code>).
+                    Includes all subfolders/files. Nothing is excluded automatically — only what you check here.
+                </p>
+                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                    <input type="text" class="form-input" id="deploy-exclude-manual" placeholder="manual/path or file (e.g. .env)"
+                        data-i18n-attr="placeholder|deploy_exclude_manual_ph" style="flex: 1;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addManualExclude();}">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addManualExclude()">
+                        <i data-lucide="plus" style="width: 14px; height: 14px; margin-right: 4px;"></i><span data-i18n="add">Add</span>
+                    </button>
+                </div>
+                <div id="deploy-exclude-chips" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom: 10px;"></div>
+                <div class="deploy-tree" id="deploy-exclude-tree" style="max-height: 320px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; background: rgba(0,0,0,0.2);">
+                    <div class="empty-state" style="padding: 20px; text-align: center;" data-i18n="loading">Loading...</div>
+                </div>
+            </div>
+
+            <!-- ═══ TAB: CONNECTION ═══ -->
+            <div id="deploy-tab-connection" class="settings-tab-content">
+                <div class="settings-section-title" style="margin-left:0; margin-bottom: 12px; display:flex; align-items:center; justify-content: space-between;">
+                    <span data-i18n="deploy_ftp_settings">FTP / FTPS Settings</span>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="testFtpConnection(this)">
+                        <i data-lucide="plug" style="width: 14px; height: 14px; margin-right: 4px;"></i><span data-i18n="deploy_test_conn">Test</span>
+                    </button>
+                </div>
+                <div class="settings-grid-row" style="margin-bottom: 8px;">
+                    <div class="form-group" style="margin-bottom: 8px;">
+                        <label class="form-label" data-i18n="deploy_ftp_host">Host</label>
+                        <input type="text" class="form-input" id="deploy-ftp-host" placeholder="ftp.example.com" data-i18n-attr="placeholder|deploy_ftp_host_ph">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 8px; max-width: 120px;">
+                        <label class="form-label" data-i18n="deploy_ftp_port">Port</label>
+                        <input type="number" class="form-input" id="deploy-ftp-port" value="21">
+                    </div>
+                </div>
+                <div class="settings-grid-row" style="margin-bottom: 8px;">
+                    <div class="form-group" style="margin-bottom: 8px;">
+                        <label class="form-label" data-i18n="deploy_ftp_user">User</label>
+                        <input type="text" class="form-input" id="deploy-ftp-user" autocomplete="off">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 8px;">
+                        <label class="form-label" data-i18n="deploy_ftp_pass">Password</label>
+                        <input type="password" class="form-input" id="deploy-ftp-pass" autocomplete="new-password">
+                    </div>
+                </div>
+                <div class="settings-grid-row" style="margin-bottom: 8px;">
+                    <div class="form-group" style="margin-bottom: 8px; max-width: 180px;">
+                        <label class="form-label" data-i18n="deploy_ftp_secure">Secure (FTPS)</label>
+                        <label class="form-checkbox" style="margin-top: 10px;">
+                            <input type="checkbox" id="deploy-ftp-secure" class="table-cb">
+                            <span data-i18n="deploy_ftp_secure_desc">Use FTPS (TLS)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-section-title" style="margin-left:0; margin-top: 20px; margin-bottom: 12px; display:flex; align-items:center; justify-content: space-between;">
+                    <span><label class="form-checkbox" style="display:inline-flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="deploy-mysql-enabled" class="table-cb" onchange="toggleDeployMysql()">
+                        <span data-i18n="deploy_mysql_settings">MySQL Sync (Remote)</span>
+                    </label></span>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="testMysqlConnection(this)">
+                        <i data-lucide="plug" style="width: 14px; height: 14px; margin-right: 4px;"></i><span data-i18n="deploy_test_conn">Test</span>
+                    </button>
+                </div>
+                <div id="deploy-mysql-fields" style="display:none;">
+                    <div class="settings-grid-row" style="margin-bottom: 8px;">
+                        <div class="form-group" style="margin-bottom: 8px;">
+                            <label class="form-label" data-i18n="deploy_mysql_host">Remote Host</label>
+                            <input type="text" class="form-input" id="deploy-mysql-host" placeholder="db.example.com" data-i18n-attr="placeholder|deploy_mysql_host_ph">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 8px; max-width: 120px;">
+                            <label class="form-label" data-i18n="deploy_mysql_port">Port</label>
+                            <input type="number" class="form-input" id="deploy-mysql-port" value="3306">
+                        </div>
+                    </div>
+                    <div class="settings-grid-row" style="margin-bottom: 8px;">
+                        <div class="form-group" style="margin-bottom: 8px;">
+                            <label class="form-label" data-i18n="deploy_mysql_user">Remote User</label>
+                            <input type="text" class="form-input" id="deploy-mysql-user" autocomplete="off">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 8px;">
+                            <label class="form-label" data-i18n="deploy_mysql_pass">Remote Password</label>
+                            <input type="password" class="form-input" id="deploy-mysql-pass" autocomplete="new-password">
+                        </div>
+                    </div>
+                    <div class="settings-grid-row">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label" data-i18n="deploy_mysql_remotedb">Remote Database</label>
+                            <input type="text" class="form-input" id="deploy-mysql-remotedb" placeholder="remote_db_name" data-i18n-attr="placeholder|deploy_mysql_remotedb_ph">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label" data-i18n="deploy_mysql_localdb">Local Database (source)</label>
+                            <select class="form-input" id="deploy-mysql-localdb">
+                                <option value="" data-i18n="select_db">Select a database...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p style="font-size: 12px; color: var(--accent-amber); margin-top: 8px; line-height: 1.4;" data-i18n="deploy_mysql_warning">
+                        ⚠ Overwrites tables that exist in BOTH databases. Remote-only tables (not present locally) are kept. A backup of the remote database is taken automatically before overwriting.
+                    </p>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 6px; line-height: 1.4;" data-i18n="deploy_mysql_prereq">
+                        The remote database must already exist on the hosting (create it in cPanel first if needed).
+                    </p>
+                </div>
+            </div>
+
+            <div style="margin-top: 24px; display: flex; justify-content: space-between; gap: 12px; align-items: center;">
+                <div id="deploy-last-upload-info" style="font-size: 12px; color: var(--text-muted);"></div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn btn-secondary" onclick="closeDeploySettingsModal()" data-i18n="close">Close</button>
+                    <button class="btn btn-primary" id="btn-save-deploy" onclick="saveDeploySettings()">
+                        <i data-lucide="save" style="width: 16px; height: 16px; margin-right: 6px;"></i> <span data-i18n="save">Save</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ MAPPING SOURCE PICKER MODAL ═══ -->
+    <div class="modal-overlay" id="modal-mapping-picker">
+        <div class="modal" style="max-width: 520px; padding: 24px;">
+            <div class="modal-header" style="margin-bottom: 16px;">
+                <div class="modal-title" style="font-size: 16px;"><i data-lucide="folder-tree"
+                        style="width: 18px; height: 18px; margin-right: 8px; color: var(--accent-blue-light);"></i>
+                    <span data-i18n="deploy_picker_title">Select Source</span>
+                </div>
+                <button class="modal-close" onclick="closeMappingSourcePicker()">✕</button>
+            </div>
+
+            <div style="display:flex; gap: 8px; margin-bottom: 12px;">
+                <div id="deploy-picker-subtitle" style="align-self: center; color: var(--text-muted); font-size: 12px; font-family: 'JetBrains Mono', monospace;"></div>
+            </div>
+
+            <div class="deploy-tree" id="deploy-picker-tree" style="max-height: 280px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; background: rgba(0,0,0,0.2);">
+                <div class="empty-state" style="padding: 20px; text-align: center;" data-i18n="loading">Loading...</div>
+            </div>
+
+            <div style="margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" data-i18n="deploy_picker_selected">Selected source</label>
+                    <input type="text" class="form-input" id="deploy-picker-selected-from" readonly style="font-family: 'JetBrains Mono', monospace; font-size: 12px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" data-i18n="deploy_picker_type">Type</label>
+                    <input type="text" class="form-input" id="deploy-picker-type" readonly value="file">
+                </div>
+            </div>
+            <div class="form-group" style="margin-top: 10px; margin-bottom: 0;">
+                <label class="form-label" data-i18n="deploy_picker_target">Remote target path</label>
+                <input type="text" class="form-input" id="deploy-picker-new-to" placeholder="e.g. noykozmetik/app or public_html" style="font-family: 'JetBrains Mono', monospace; font-size: 12px;">
+                <small class="form-hint" data-i18n="deploy_picker_target_hint">End with "/" to drop the file into a folder keeping its name.</small>
+            </div>
+
+            <div style="margin-top: 20px; display: flex; justify-content: flex-end; gap: 12px;">
+                <button class="btn btn-secondary" onclick="closeMappingSourcePicker()" data-i18n="cancel">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmMappingFromPicker()">
+                    <i data-lucide="plus" style="width: 14px; height: 14px; margin-right: 4px;"></i>
+                    <span data-i18n="deploy_picker_add">Add Rule</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ DEPLOY CONFIRM / PROGRESS MODAL ═══ -->
+    <div class="modal-overlay" id="modal-deploy-run">
+        <div class="modal" style="max-width: 520px; padding: 28px;">
+            <div class="modal-header" style="margin-bottom: 16px;">
+                <div class="modal-title" style="font-size: 18px;"><i data-lucide="cloud-upload"
+                        style="width: 20px; height: 20px; margin-right: 8px; color: var(--accent-emerald);"></i>
+                    <span data-i18n="deploy_to_hosting">Upload to Hosting</span>
+                    <span id="deploy-run-proj" style="color: var(--accent-blue-light); font-weight: 700; margin-left: 6px;"></span>
+                </div>
+                <button class="modal-close" onclick="closeDeployRunModal()">✕</button>
+            </div>
+
+            <input type="hidden" id="deploy-run-project">
+
+            <div id="deploy-run-confirm">
+                <div style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px; line-height: 1.5;">
+                    <span data-i18n="deploy_confirm_desc">Only locally modified files (since last upload) will be uploaded. Override files and MySQL sync (if enabled) will also run.</span>
+                </div>
+                <label class="form-checkbox" style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="deploy-full-sync" class="table-cb">
+                    <span data-i18n="deploy_full_sync">Full upload (re-upload all files, ignore last upload time)</span>
+                </label>
+                <div id="deploy-run-warnings" style="display:none; margin-bottom: 16px;"></div>
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button class="btn btn-secondary" onclick="closeDeployRunModal()" data-i18n="cancel">Cancel</button>
+                    <button class="btn btn-primary" id="btn-start-deploy" onclick="executeDeploy()">
+                        <i data-lucide="rocket" style="width: 16px; height: 16px; margin-right: 6px;"></i> <span data-i18n="deploy_start_btn">Start Upload</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="deploy-run-progress" style="display:none;">
+                <div class="clone-progress-bar">
+                    <div class="clone-progress-fill" id="deploy-progress-fill" style="width: 0%"></div>
+                </div>
+                <div class="clone-status" id="deploy-progress-text" style="margin-top: 10px;"></div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                    <button class="btn btn-danger-outline" id="btn-cancel-deploy" onclick="cancelDeploy()" data-i18n="deploy_cancel">Cancel</button>
+                    <button class="btn btn-secondary" onclick="closeDeployRunModal()" data-i18n="close">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
     <script>
         // Initialize Lucide icons

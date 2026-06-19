@@ -49,7 +49,17 @@ etc/logs/
 etc/vhosts/generated/
 etc/ssl/generated/
 
+# Auto-generated vhost configs (regenerated on every Apache start)
+etc/apache2/sites-enabled/auto.*.conf
+
+# Tooling local state
+.kilo/
+Temp/
+%TEMP%/
+
 # Configuration and session data (optional, but keep settings.json to save defaults)
 # settings.json
 # quick_access.json
 # cron.json
+
+.touchamp/
