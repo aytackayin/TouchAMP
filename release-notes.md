@@ -1,4 +1,28 @@
-# 🚀 TouchAMP v1.0.5
+# 🚀 TouchAMP v1.0.6
+
+## 🛠️ Fixes
+
+### Auto-update rewritten (fast + safe)
+The previous updater copied files one-by-one through PowerShell, which was slow (often 15-25 minutes) and exposed user data to risk. It is now replaced with a bulk-extract approach:
+
+- The new ZIP is extracted directly over the existing installation in one go, instead of 3000+ individual `Copy-Item` calls.
+- Before the extract, the following user data is **moved aside** (not copied, so antivirus does not rescan it):
+  - `www/`, `data/`, `backups/`, `mysql_exports/`, `bin/versions/`
+  - `etc/apache2/sites-enabled/`, `etc/ssl/`
+  - `settings.json`, `cron.json`, `quick_access.json`
+- After the extract, the preserved items are moved back to their original locations.
+- If anything fails, the catch block restores everything from the backup.
+
+Typical update time drops from 15-25 minutes to 1-3 minutes on a normal disk.
+
+### Release ZIP is now clean of user data
+`build-custom.js` no longer copies `www/`, `backups/`, `mysql_exports/`, `etc/apache2/sites-enabled/`, `etc/ssl/`, or `quick_access.json` into the release artifact. User data only ever lives in the host installation, never in the published ZIP.
+
+## 📥 Download Instructions
+Download the `TouchAMP_v1.0.6-win32-x64.zip` file below, extract it anywhere on your Windows PC, and double click `TouchAMP.exe` to launch.
+
+---
+*Developed with ❤️ by Aytaç KAYIN.*
 
 ## ✨ What's New in v1.0.5 — Deploy to Hosting (FTP/FTPS + Remote MySQL)
 

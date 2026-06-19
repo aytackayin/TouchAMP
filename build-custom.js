@@ -54,9 +54,27 @@ async function build() {
         console.log(`   [OK] Packaging complete: ${appDir}`);
 
         console.log('2. Copying external resources (Portable Structure)...');
-        // const foldersToCopy = ['bin', 'data', 'www', 'etc', 'backups', 'mysql_exports', 'lang'];
-        const foldersToCopy = ['bin\\openssl', 'etc', 'www', 'backups', 'mysql_exports', 'lang'];
-        const filesToCopy = ['quick_access.json']; // settings.json'u da garantileyelim
+        // Only copy resources that are part of the application template (not user data).
+        // User data folders (www, data, backups, mysql_exports, bin/versions, etc/apache2/sites-enabled)
+        // and config files (settings.json, quick_access.json, cron.json) must NEVER end up in the
+        // release ZIP, otherwise updates overwrite them on the host.
+        const foldersToCopy = ['bin\\openssl', 'etc', 'lang'];
+        const filesToCopy = [];
+
+        // Subfolder filter: exclude any user-generated content that would otherwise
+        // overwrite a host installation during the auto-update.
+        const userExcludedDirs = new Set([
+            'sites-enabled',  // etc/apache2/sites-enabled/ (auto-generated vhosts)
+            'ssl',            // etc/ssl/ (auto-generated certs)
+            'logs',
+            'temp',
+            'tmp',
+            'node_modules',
+            '.git',
+            '.vscode',
+            '.idea',
+            'versions'        // bin/versions/ (user-installed PHP/Apache/MySQL)
+        ]);
 
         foldersToCopy.forEach(folder => {
             const srcDir = path.join(__dirname, folder);
@@ -73,12 +91,15 @@ async function build() {
 
                             // Debug dosyaları (.pdb, .lib vb.) ve log/temp klasörlerini filtrele
                             const excludedExts = ['.pdb', '.lib', '.obj', '.exp', '.ilk', '.bak', '.log', '.tmp'];
-                            const excludedDirs = ['logs', 'temp', 'tmp'];
-
-                            return !basename.startsWith('.git') &&
-                                !excludedExts.includes(ext) &&
-                                !excludedDirs.includes(basename) &&
-                                !basename.includes('.log');
+                            if (basename.startsWith('.git')) return false;
+                            if (excludedExts.includes(ext)) return false;
+                            if (basename.includes('.log')) return false;
+                            // Exclude user data subfolders (absolute path under those excluded dirs)
+                            const normalizedSrc = src.replace(/\\/g, '/');
+                            for (const excluded of userExcludedDirs) {
+                                if (normalizedSrc.includes('/' + excluded + '/') || normalizedSrc.endsWith('/' + excluded)) return false;
+                            }
+                            return true;
                         }
                     });
                     console.log(`   -> Folder ${folder} ready.`);

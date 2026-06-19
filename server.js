@@ -2597,144 +2597,124 @@ app.get('/api/update/check', async (req, res) => {
 app.post('/api/update/execute', async (req, res) => {
     const { zipUrl } = req.body;
     if (!zipUrl) return res.status(400).json({ success: false, message: 'Missing zipUrl.' });
-    
+
     res.json({ success: true, message: 'Update started. The application will close, update, and restart shortly.' });
-    
+
     // Process update asynchronously
     setTimeout(async () => {
         try {
             // Stop all services
             if (isProcessRunning('httpd.exe')) stopAllProcesses('httpd.exe');
             if (isProcessRunning('mysqld.exe')) stopAllProcesses('mysqld.exe');
-            
+
             for (let i = 0; i < 25; i++) {
                 if (!isProcessRunning('httpd.exe') && !isProcessRunning('mysqld.exe')) break;
                 await new Promise(r => setTimeout(r, 200));
             }
-            
+
             const tempZip = path.join(os.tmpdir(), 'touchamp-update.zip');
             const extractPath = path.join(os.tmpdir(), 'touchamp-extracted');
-            
+            const backupPath = path.join(os.tmpdir(), 'touchamp-userdata-backup');
+
             // Download update zip
             await downloadUrlToFile(zipUrl, tempZip);
-            
-            // Write temporary PowerShell script
+
+            // Build the new updater script: 1) move user data out of the way,
+            // 2) extract the zip over the target (application files only),
+            // 3) move user data back, 4) start the new exe, 5) clean up.
             const updaterScriptPath = path.join(config.BASE_DIR, '_update_app.ps1');
             const psScript = `
 $ProgressPreference = 'SilentlyContinue'
+$ErrorActionPreference = 'Stop'
 Start-Sleep -Seconds 3
 
-$zipPath = '${tempZip.replace(/\\/g, '/')}'
-$extractPath = '${extractPath.replace(/\\/g, '/')}'
-$targetPath = '${config.BASE_DIR.replace(/\\/g, '/')}'
+$zipPath      = '${tempZip.replace(/\\/g, '/')}'
+$extractPath  = '${extractPath.replace(/\\/g, '/')}'
+$backupPath   = '${backupPath.replace(/\\/g, '/')}'
+$targetPath   = '${config.BASE_DIR.replace(/\\/g, '/')}'
+
+# Folders and files that must NEVER be overwritten by the update.
+# These are moved aside before the bulk extract and restored afterwards.
+$preserveFolders = @('www', 'data', 'backups', 'mysql_exports', 'bin\\versions', 'etc\\apache2\\sites-enabled', 'etc\\ssl')
+$preserveFiles   = @('settings.json', 'cron.json', 'quick_access.json')
+
+function Move-Aside($path, $dest) {
+    if (-not (Test-Path -LiteralPath $path)) { return }
+    $parent = Split-Path -Parent $dest
+    if (-not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+    Move-Item -LiteralPath $path -Destination $dest -Force
+}
 
 try {
+    # 1) Move user data aside
+    if (Test-Path $backupPath) { Remove-Item -Recurse -Force $backupPath }
+    New-Item -ItemType Directory -Path $backupPath -Force | Out-Null
+    foreach ($rel in $preserveFolders) {
+        $abs = Join-Path $targetPath ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
+        $dest = Join-Path $backupPath ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
+        Move-Aside $abs $dest
+    }
+    foreach ($name in $preserveFiles) {
+        Move-Aside (Join-Path $targetPath $name) (Join-Path $backupPath $name)
+    }
+
+    # 2) Extract the new version over the target.
+    # The release zip contains ONLY application files (no user data), so the
+    # bulk extract is safe and fast — all 3000+ files land in one go, and
+    # Windows Defender scans them once.
     if (Test-Path $extractPath) { Remove-Item -Recurse -Force $extractPath }
-    Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
-} catch {
+    Expand-Archive -Path $zipPath -DestinationPath $targetPath -Force
+
+    # 3) Restore preserved user data
+    foreach ($rel in $preserveFolders) {
+        $src = Join-Path $backupPath ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
+        $dest = Join-Path $targetPath ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
+        if (Test-Path -LiteralPath $src) {
+            $parent = Split-Path -Parent $dest
+            if (-not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+            Move-Item -LiteralPath $src -Destination $dest -Force
+        }
+    }
+    foreach ($name in $preserveFiles) {
+        $src = Join-Path $backupPath $name
+        $dest = Join-Path $targetPath $name
+        if (Test-Path -LiteralPath $src) {
+            Move-Item -LiteralPath $src -Destination $dest -Force
+        }
+    }
+}
+catch {
+    # Try to restore on failure
+    foreach ($rel in $preserveFolders) {
+        $src = Join-Path $backupPath ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
+        $dest = Join-Path $targetPath ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
+        if (Test-Path -LiteralPath $src) { Move-Item -LiteralPath $src -Destination $dest -Force }
+    }
+    foreach ($name in $preserveFiles) {
+        $src = Join-Path $backupPath $name
+        $dest = Join-Path $targetPath $name
+        if (Test-Path -LiteralPath $src) { Move-Item -LiteralPath $src -Destination $dest -Force }
+    }
     exit 1
 }
 
-$binFile = Get-ChildItem -Path $extractPath -Filter 'TouchAMP.exe' -Recurse | Select-Object -First 1
-if (!$binFile) {
-    exit 1
-}
-$sourceRoot = $binFile.Directory.FullName
-
-function Copy-FilesWithExclusions($src, $dest) {
-    $excludeFolders = @('www', 'data', 'backups', 'mysql_exports', 'versions', 'ssl', 'sites-enabled')
-    $excludeFiles = @('settings.json', 'cron.json')
-    
-    Get-ChildItem -Path $src | ForEach-Object {
-        $name = $_.Name
-        $isContainer = $_.PSIsContainer
-        $destPath = Join-Path $dest $name
-        
-        if ($isContainer) {
-            if ($excludeFolders -contains $name) { return }
-            if ($name -eq 'etc') {
-                if (!(Test-Path $destPath)) { New-Item -ItemType Directory -Path $destPath -Force | Out-Null }
-                Copy-EtcSubfolders (Join-Path $src 'etc') $destPath
-                return
-            }
-            if ($name -eq 'bin') {
-                if (!(Test-Path $destPath)) { New-Item -ItemType Directory -Path $destPath -Force | Out-Null }
-                Copy-BinSubfolders (Join-Path $src 'bin') $destPath
-                return
-            }
-            if (!(Test-Path $destPath)) { New-Item -ItemType Directory -Path $destPath -Force | Out-Null }
-            Copy-FilesWithExclusions $_.FullName $destPath
-        } else {
-            if ($excludeFiles -contains $name) { return }
-            if ($name -eq 'quick_access.json' -and (Test-Path $destPath)) { return }
-            Copy-Item -Path $_.FullName -Destination $destPath -Force
-        }
-    }
-}
-
-function Copy-EtcSubfolders($src, $dest) {
-    Get-ChildItem -Path $src | ForEach-Object {
-        $name = $_.Name
-        $destPath = Join-Path $dest $name
-        if ($_.PSIsContainer) {
-            if ($name -eq 'ssl') { return }
-            if ($name -eq 'apache2') {
-                if (!(Test-Path $destPath)) { New-Item -ItemType Directory -Path $destPath -Force | Out-Null }
-                Copy-Apache2Subfolders $_.FullName $destPath
-                return
-            }
-            if (!(Test-Path $destPath)) { New-Item -ItemType Directory -Path $destPath -Force | Out-Null }
-            Copy-FilesWithExclusions $_.FullName $destPath
-        } else {
-            Copy-Item -Path $_.FullName -Destination $destPath -Force
-        }
-    }
-}
-
-function Copy-Apache2Subfolders($src, $dest) {
-    Get-ChildItem -Path $src | ForEach-Object {
-        $name = $_.Name
-        $destPath = Join-Path $dest $name
-        if ($_.PSIsContainer) {
-            if ($name -eq 'sites-enabled') { return }
-            if (!(Test-Path $destPath)) { New-Item -ItemType Directory -Path $destPath -Force | Out-Null }
-            Copy-FilesWithExclusions $_.FullName $destPath
-        } else {
-            Copy-Item -Path $_.FullName -Destination $destPath -Force
-        }
-    }
-}
-
-function Copy-BinSubfolders($src, $dest) {
-    Get-ChildItem -Path $src | ForEach-Object {
-        $name = $_.Name
-        $destPath = Join-Path $dest $name
-        if ($_.PSIsContainer) {
-            if ($name -eq 'versions') { return }
-            if (!(Test-Path $destPath)) { New-Item -ItemType Directory -Path $destPath -Force | Out-Null }
-            Copy-FilesWithExclusions $_.FullName $destPath
-        } else {
-            Copy-Item -Path $_.FullName -Destination $destPath -Force
-        }
-    }
-}
-
-Copy-FilesWithExclusions $sourceRoot $targetPath
-
+# 4) Launch the new build
 $exePath = Join-Path $targetPath 'TouchAMP.exe'
 if (Test-Path $exePath) {
     Start-Process -FilePath $exePath -WorkingDirectory $targetPath
 }
 
+# 5) Clean up temp files (background job so the new app can start immediately)
 Start-Job -ScriptBlock {
     Start-Sleep -Seconds 5
-    Remove-Item -Path $args[0] -Force
-    Remove-Item -Path $args[1] -Recurse -Force
-    Remove-Item -Path $args[2] -Force
-} -ArgumentList $zipPath, $extractPath, $MyInvocation.MyCommand.Path
+    Remove-Item -Path $args[0] -Force -ErrorAction SilentlyContinue
+    if (Test-Path $args[1]) { Remove-Item -Recurse -Force $args[1] -ErrorAction SilentlyContinue }
+    if (Test-Path $args[2]) { Remove-Item -Recurse -Force $args[2] -ErrorAction SilentlyContinue }
+    Remove-Item -Path $args[3] -Force -ErrorAction SilentlyContinue
+} -ArgumentList $zipPath, $extractPath, $backupPath, $MyInvocation.MyCommand.Path
 `;
             fs.writeFileSync(updaterScriptPath, psScript, 'utf-8');
-            
+
             // Execute updater script completely detached
             const child = spawn('powershell.exe', [
                 '-NoProfile',
@@ -2749,7 +2729,7 @@ Start-Job -ScriptBlock {
             child.unref();
             process.exit(0);
         } catch (e) {
-            process.stdout.write(`  [!] Auto-update failed: ${e.message}\\n`);
+            process.stdout.write(`  [!] Auto-update failed: ${e.message}\n`);
         }
     }, 500);
 });

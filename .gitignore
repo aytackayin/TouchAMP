@@ -52,6 +52,31 @@ etc/ssl/generated/
 # Auto-generated vhost configs (regenerated on every Apache start)
 etc/apache2/sites-enabled/auto.*.conf
 
+# Build output (Electron packager artifacts)
+dist/
+resources/
+# Electron runtime files leaked to repo root by build-custom.js
+TouchAMP.exe
+LICENSE
+LICENSES.chromium.html
+chrome_100_percent.pak
+chrome_200_percent.pak
+d3dcompiler_47.dll
+dxcompiler.dll
+dxil.dll
+ffmpeg.dll
+icudtl.dat
+libEGL.dll
+libGLESv2.dll
+resources.pak
+snapshot_blob.bin
+v8_context_snapshot.bin
+vk_swiftshader.dll
+vk_swiftshader_icd.json
+vulkan-1.dll
+version
+locales/
+
 # Tooling local state
 .kilo/
 Temp/
