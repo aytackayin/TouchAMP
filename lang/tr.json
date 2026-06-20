@@ -127,6 +127,7 @@
   "cron_every_year": "Her yıl 1 Ocak'ta",
   "cron_fields_required": "Ad, zamanlama ve komut alanları zorunludur.",
   "cron_format_guide": "Zamanlama Format Rehberi",
+  "cron_auto_formatted": "Zamanlama otomatik düzeltildi: {x}",
   "cron_node_desc": "TouchAMP ana dizinindeki veya proje klasörünüzdeki bir scripti çalıştırın.",
   "cron_node_script": "2. Yerel bir Node.js Dosyasını Çalıştırmak",
   "cron_not_found": "Görev bulunamadı.",

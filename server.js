@@ -2322,8 +2322,22 @@ function generateId() {
 }
 
 // Simple cron expression parser: "minute hour day month day_of_week"
+// Boşluksuz/eksik girilmiş ifadeleri otomatik düzeltir: "*****" -> "* * * * *", "*/5****" -> "*/5 * * * *"
+function normalizeCronExpr(input) {
+    const s = (input || '').toString().trim();
+    if (!s) return s;
+    const tokenRegex = /(?:\*(?:\/\d+)?|\d+(?:[-,]\d+)*(?:\/\d+)?)/g;
+    const tokens = s.match(tokenRegex) || [];
+    const fields = [];
+    for (let i = 0; i < 5; i++) {
+        fields.push(tokens[i] !== undefined ? tokens[i] : '*');
+    }
+    return fields.join(' ');
+}
+
 function cronMatches(schedule, now) {
-    const parts = schedule.trim().split(/\s+/);
+    const normalized = normalizeCronExpr(schedule);
+    const parts = normalized.split(/\s+/);
     if (parts.length < 5) return false;
 
     const [minPart, hourPart, domPart, monthPart, dowPart] = parts;
@@ -2403,11 +2417,16 @@ app.post('/api/cron', (req, res) => {
         return res.json({ success: false, message: t('cron_fields_required', 'Name, schedule and command fields are required.') });
     }
 
+    const normalizedSchedule = normalizeCronExpr(schedule);
+    if (!normalizedSchedule.replace(/\s/g, '').length) {
+        return res.json({ success: false, message: t('invalid_schedule_err', 'Invalid schedule format. 5 fields required: minute hour day month dayOfWeek') });
+    }
+
     const jobs = loadCronJobs();
     const newJob = {
         id: generateId(),
         name: name.trim(),
-        schedule: schedule.trim(),
+        schedule: normalizedSchedule,
         command: command.trim(),
         enabled: enabled !== false,
         createdAt: new Date().toISOString()
@@ -2427,7 +2446,7 @@ app.put('/api/cron/:id', (req, res) => {
     if (idx === -1) return res.json({ success: false, message: t('cron_not_found', 'Task not found.') });
 
     if (name !== undefined) jobs[idx].name = name.trim();
-    if (schedule !== undefined) jobs[idx].schedule = schedule.trim();
+    if (schedule !== undefined) jobs[idx].schedule = normalizeCronExpr(schedule);
     if (command !== undefined) jobs[idx].command = command.trim();
     if (enabled !== undefined) jobs[idx].enabled = !!enabled;
 

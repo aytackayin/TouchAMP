@@ -15,7 +15,8 @@ TouchAMP, Node.js ve Electron ile geliştirilmiş; yüksek performanslı, taşı
 - **🔄 Akıllı Çoklu-PHP Desteği**: PHP versiyonları arasında hızla geçiş yapın ve eklentileri (extensions) yönetin.
 - **📦 Yedekleme Sistemi**: Entegre SQL ve dosya yedekleme/aktarma sistemi (Yüksek hızlı ZIP sıkıştırmalı).
 - **⚡ Hızlı Erişim (Quick Access)**: localhost, phpMyAdmin ve kendi eklediğiniz linklere, klasörlere veya programlara tek tıkla ulaşın.
-- **⏰ Zamanlanmış Görevler**: Veritabanı yedekleme veya özel betikler (Node, PHP, Batch) için yerleşik görev yöneticisi.
+- **⏰ Zamanlanmış Görevler**: Veritabanı yedekleme veya özel betikler (Node, PHP, Batch) için yerleşik görev yöneticisi. Zamanlama alanı akıllı otomatik biçimlendirme yapar (artık `*****` yazınca hata yok).
+- **🚀 Hostinge Deploy (Yükleme)**: `www/` içindeki her projeyi FTP/FTPS ile tek tıkla uzak hostinge yükleyin. Artımlı yükleme, proje başına eşleme kuralları, hariç tutma listesi ve otomatik yedek alarak opsiyonel uzak MySQL senkronizasyonu.
 - **📂 {APP} Dinamik Yolu**: Klasör yollarında `{APP}` değişkenini kullanarak yapılandırmanızı tamamen taşınabilir hale getirin.
 - **🛡️ Yönetici Yetkisi (UAC)**: Sistem `hosts` dosyası ve servis yönetimi için gerekli yetkileri otomatik olarak talep eder.
 - **📡 Sistem Tepsisi (Tray) Entegrasyonu**: Windows görev çubuğundan anlık durum takibi ve hız kontroller.

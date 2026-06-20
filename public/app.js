@@ -1653,6 +1653,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+    setupCronScheduleInput();
 });
 
 // Load PHP Settings
@@ -2546,18 +2547,42 @@ async function loadCronJobs() {
     applyTranslations();
 }
 
+function normalizeCronInput(input) {
+    const s = (input || '').trim();
+    if (!s) return s;
+    // Her cron alanını bir token olarak yakala: "*", "*/n", "n", "n-m", "n,m,k", "n-m/s", ...
+    const tokenRegex = /(?:\*(?:\/\d+)?|\d+(?:[-,]\d+)*(?:\/\d+)?)/g;
+    const tokens = s.match(tokenRegex) || [];
+    const fields = [];
+    for (let i = 0; i < 5; i++) {
+        fields.push(tokens[i] !== undefined ? tokens[i] : '*');
+    }
+    return fields.join(' ');
+}
+
 async function addCronJob() {
     const name = document.getElementById('cron-new-name').value.trim();
-    const schedule = document.getElementById('cron-new-schedule').value.trim();
+    let schedule = document.getElementById('cron-new-schedule').value.trim();
     const command = document.getElementById('cron-new-command').value.trim();
 
     if (!name || !schedule || !command) {
         return showToast(t('plz_fill_all', 'Please fill all fields.'), 'error');
     }
 
-    // Simple format check
-    if (schedule.split(/\s+/).length < 5) {
+    // Boşluksuz/eksik girilmiş ifadeleri otomatik düzelt: "*****" -> "* * * * *", "*/5****" -> "*/5 * * * *"
+    const normalized = normalizeCronInput(schedule);
+    const wasChanged = normalized !== schedule;
+
+    // Geçersiz token yoksa (örn. harf içeriyorsa) hata ver
+    if (!normalized.replace(/\s/g, '').length) {
         return showToast(t('invalid_schedule_err', 'Invalid schedule format. 5 fields required: minute hour day month dayOfWeek'), 'error');
+    }
+
+    schedule = normalized;
+    document.getElementById('cron-new-schedule').value = schedule;
+
+    if (wasChanged) {
+        showToast(t('cron_auto_formatted', 'Schedule auto-formatted: {x}').replace('{x}', schedule), 'info');
     }
 
     const data = await apiCall('/api/cron', {
@@ -2612,6 +2637,31 @@ function copyToCron(schedule, command) {
     document.getElementById('cron-new-command').value = command;
     closeCronSamplesModal();
     showToast(t('sample_copied', 'Sample copied to form.'), 'success');
+}
+
+function setupCronScheduleInput() {
+    const el = document.getElementById('cron-new-schedule');
+    if (!el || el.dataset.bound === '1') return;
+    el.dataset.bound = '1';
+    const tokenRegex = /(?:\*(?:\/\d+)?|\d+(?:[-,]\d+)*(?:\/\d+)?)/g;
+    el.addEventListener('input', function() {
+        const val = this.value;
+        const tokens = val.match(tokenRegex) || [];
+        if (tokens.length >= 5) {
+            const normalized = normalizeCronInput(val);
+            if (normalized !== val) {
+                this.value = normalized;
+                const end = normalized.length;
+                this.setSelectionRange(end, end);
+            }
+        }
+    });
+    el.addEventListener('blur', function() {
+        const normalized = normalizeCronInput(this.value);
+        if (normalized && normalized !== this.value.trim()) {
+            this.value = normalized;
+        }
+    });
 }
 
 function toggleBrowserPath() {

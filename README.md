@@ -15,7 +15,8 @@ TouchAMP is a high-performance, portable, and visually stunning local developmen
 - **🔄 Smart Multi-PHP**: Easily switch between PHP versions and manage extensions.
 - **📦 Backup System**: Integrated SQL and file backup/restore with high-speed ZIP compression.
 - **⚡ Quick Access**: A sidebar for one-click access to localhost, phpMyAdmin, and your custom links, folders, or executables.
-- **⏰ Scheduled Tasks**: Built-in cron-like task runner for database backups or custom scripts (Node, PHP, Batch).
+- **⏰ Scheduled Tasks**: Built-in cron-like task runner for database backups or custom scripts (Node, PHP, Batch). Smart auto-formatting for the schedule field (no more `*****` errors).
+- **🚀 Deploy to Hosting**: One-click deploy of any `www/` project to remote hosting via FTP/FTPS, with incremental uploads, per-project mapping rules, exclusion lists, and optional remote MySQL sync with automatic pre-import backup.
 - **📂 {APP} Dynamic Path**: Use the `{APP}` variable in settings to make your folder configurations fully portable.
 - **🛡️ UAC Elevation**: Automatically requests administrator privileges to manage system `hosts` and services securely.
 - **📡 System Tray Integration**: Real-time monitoring and controls directly from the Windows tray.

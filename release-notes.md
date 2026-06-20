@@ -1,3 +1,24 @@
+# 🚀 TouchAMP v1.0.12
+
+## ✨ Improvements
+
+### Scheduled Tasks — friendly schedule input (no more `*****` errors)
+The cron schedule field used to reject common shorthand entries like `*****` (every minute) or `*/5****` (every 5 minutes) because the fields weren't space-separated. Users had to know the exact 5-field syntax up-front, which led to confusing "Invalid schedule format" errors.
+
+- The schedule input now **auto-formats** as you type: once 5 cron tokens are detected, missing spaces are inserted automatically (e.g. `*****` → `* * * * *`, `*/5****` → `*/5 * * * *`).
+- The **Add** button also normalizes the value before saving, and shows a friendly toast (`Schedule auto-formatted: * * * * *`) so you always see what was stored.
+- The same normalization runs **server-side** (POST/PUT endpoints and the cron runner) so direct API calls and existing cron files are also protected.
+- Existing 5-field expressions like `0 3 * * *`, `*/15 * * * *`, `0,15,30,45 * * * *`, and `1-5/2 * * * *` are recognized correctly and pass through untouched.
+
+## 🛠️ Documentation
+- README and BENIOKU now document the **Deploy to Hosting** feature (FTP/FTPS + remote MySQL) that shipped in v1.0.5 but was missing from the public docs.
+
+## 📥 Download Instructions
+Download the `TouchAMP_v1.0.12-win32-x64.zip` file below, extract it anywhere on your Windows PC, and double click `TouchAMP.exe` to launch.
+
+---
+*Developed with ❤️ by Aytaç KAYIN.*
+
 # 🚀 TouchAMP v1.0.11
 
 ## ✨ Improvements
