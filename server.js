@@ -2613,108 +2613,44 @@ app.post('/api/update/execute', async (req, res) => {
             }
 
             const tempZip = path.join(os.tmpdir(), 'touchamp-update.zip');
-            const extractPath = path.join(os.tmpdir(), 'touchamp-extracted');
-            const backupPath = path.join(os.tmpdir(), 'touchamp-userdata-backup');
 
             // Download update zip
             await downloadUrlToFile(zipUrl, tempZip);
 
-            // Build the new updater script: 1) move user data out of the way,
-            // 2) extract the zip over the target (application files only),
-            // 3) move user data back, 4) start the new exe, 5) clean up.
+            // Build the new updater script. The release ZIP contains ONLY
+            // application files — user data (www, data, backups, settings.json,
+            // etc.) is excluded by build-custom.js. So we extract directly over
+            // the target without moving anything aside. This is fast and safe:
+            // it avoids copying multi-GB user folders across drives (which was
+            // slow and failed on broken junctions/reparse points in www).
             const updaterScriptPath = path.join(config.BASE_DIR, '_update_app.ps1');
             const psScript = `
 $ProgressPreference = 'SilentlyContinue'
 $ErrorActionPreference = 'Stop'
 Start-Sleep -Seconds 3
 
-$zipPath      = '${tempZip.replace(/\\/g, '/')}'
-$extractPath  = '${extractPath.replace(/\\/g, '/')}'
-$backupPath   = '${backupPath.replace(/\\/g, '/')}'
-$targetPath   = '${config.BASE_DIR.replace(/\\/g, '/')}'
+$zipPath    = '${tempZip.replace(/\\/g, '/')}'
+$targetPath = '${config.BASE_DIR.replace(/\\/g, '/')}'
 
-# Folders and files that must NEVER be overwritten by the update.
-# These are moved aside before the bulk extract and restored afterwards.
-$preserveFolders = @('www', 'data', 'backups', 'mysql_exports', 'bin\\versions', 'etc\\apache2\\sites-enabled', 'etc\\ssl')
-$preserveFiles   = @('settings.json', 'cron.json', 'quick_access.json')
+# Extract the new application files over the target. User data never lives in
+# the release ZIP, so this only overwrites app files (exe, dlls, asar, etc.).
+Expand-Archive -Path $zipPath -DestinationPath $targetPath -Force
 
-function Move-Aside($path, $dest) {
-    if (-not (Test-Path -LiteralPath $path)) { return }
-    $parent = Split-Path -Parent $dest
-    if (-not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
-    Move-Item -LiteralPath $path -Destination $dest -Force
-}
-
-try {
-    # 1) Move user data aside
-    if (Test-Path $backupPath) { Remove-Item -Recurse -Force $backupPath }
-    New-Item -ItemType Directory -Path $backupPath -Force | Out-Null
-    foreach ($rel in $preserveFolders) {
-        $abs = Join-Path $targetPath ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
-        $dest = Join-Path $backupPath ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
-        Move-Aside $abs $dest
-    }
-    foreach ($name in $preserveFiles) {
-        Move-Aside (Join-Path $targetPath $name) (Join-Path $backupPath $name)
-    }
-
-    # 2) Extract the new version over the target.
-    # The release zip contains ONLY application files (no user data), so the
-    # bulk extract is safe and fast — all 3000+ files land in one go, and
-    # Windows Defender scans them once.
-    if (Test-Path $extractPath) { Remove-Item -Recurse -Force $extractPath }
-    Expand-Archive -Path $zipPath -DestinationPath $targetPath -Force
-
-    # 3) Restore preserved user data
-    foreach ($rel in $preserveFolders) {
-        $src = Join-Path $backupPath ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
-        $dest = Join-Path $targetPath ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
-        if (Test-Path -LiteralPath $src) {
-            $parent = Split-Path -Parent $dest
-            if (-not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
-            Move-Item -LiteralPath $src -Destination $dest -Force
-        }
-    }
-    foreach ($name in $preserveFiles) {
-        $src = Join-Path $backupPath $name
-        $dest = Join-Path $targetPath $name
-        if (Test-Path -LiteralPath $src) {
-            Move-Item -LiteralPath $src -Destination $dest -Force
-        }
-    }
-}
-catch {
-    # Try to restore on failure
-    foreach ($rel in $preserveFolders) {
-        $src = Join-Path $backupPath ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
-        $dest = Join-Path $targetPath ($rel -replace '/', [IO.Path]::DirectorySeparatorChar)
-        if (Test-Path -LiteralPath $src) { Move-Item -LiteralPath $src -Destination $dest -Force }
-    }
-    foreach ($name in $preserveFiles) {
-        $src = Join-Path $backupPath $name
-        $dest = Join-Path $targetPath $name
-        if (Test-Path -LiteralPath $src) { Move-Item -LiteralPath $src -Destination $dest -Force }
-    }
-    exit 1
-}
-
-# 4) Remove the one-shot scheduled task that launched this updater
+# Remove the one-shot scheduled task that launched this updater
 Unregister-ScheduledTask -TaskName 'TouchAMPUpdater' -Confirm:$false -ErrorAction SilentlyContinue
 
-# 5) Launch the new build
+# Launch the new build
 $exePath = Join-Path $targetPath 'TouchAMP.exe'
 if (Test-Path $exePath) {
     Start-Process -FilePath $exePath -WorkingDirectory $targetPath
 }
 
-# 6) Clean up temp files (background job so the new app can start immediately)
+# Clean up temp files (background job so the new app can start immediately)
 Start-Job -ScriptBlock {
     Start-Sleep -Seconds 5
     Remove-Item -Path $args[0] -Force -ErrorAction SilentlyContinue
-    if (Test-Path $args[1]) { Remove-Item -Recurse -Force $args[1] -ErrorAction SilentlyContinue }
-    if (Test-Path $args[2]) { Remove-Item -Recurse -Force $args[2] -ErrorAction SilentlyContinue }
-    Remove-Item -Path $args[3] -Force -ErrorAction SilentlyContinue
-} -ArgumentList $zipPath, $extractPath, $backupPath, $MyInvocation.MyCommand.Path
+    Remove-Item -Path $args[1] -Force -ErrorAction SilentlyContinue
+} -ArgumentList $zipPath, $MyInvocation.MyCommand.Path
 `;
             fs.writeFileSync(updaterScriptPath, psScript, 'utf-8');
 

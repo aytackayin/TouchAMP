@@ -1,3 +1,21 @@
+# 🚀 TouchAMP v1.0.10
+
+## 🛠️ Fixes
+
+### Auto-update now works reliably (no more broken-junction / multi-GB copy failure)
+v1.0.9 escaped the Electron Job Object correctly, but the updater still tried to **move all user data aside** (www, data, etc.) before extracting — and back afterwards. This copied the entire `www` folder (5 GB+) across drives (F: → C:\Temp) and crashed on a broken junction (`www\blg\public\attachments`), leaving the app closed and never restarted.
+
+This was pointless: the release ZIP **never contains user data** (excluded by the build). So the fix is to stop moving anything aside.
+
+- The updater now simply extracts the release ZIP directly over the install folder and launches the new build. Application files are overwritten; **user data is never touched**.
+- Result: updates complete in seconds instead of minutes, and can't be broken by large folders or broken junctions in `www`.
+
+## 📥 Download Instructions
+Download the `TouchAMP_v1.0.10-win32-x64.zip` file below, extract it anywhere on your Windows PC, and double click `TouchAMP.exe` to launch.
+
+---
+*Developed with ❤️ by Aytaç KAYIN.*
+
 # 🚀 TouchAMP v1.0.9
 
 ## 🛠️ Fixes
