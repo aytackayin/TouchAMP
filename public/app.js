@@ -2897,7 +2897,7 @@ async function installUpdateNow() {
     
     // Ask for final confirmation
     const confirmed = confirm(
-        window.t ? window.t('applying_update', 'Applying update... Application will restart. Services will be stopped.') : 'Applying update... Application will restart. Services will be stopped.'
+        window.t ? window.t('update_confirm_msg', 'You are about to apply an update. All services will be stopped, the application will close, update, and restart. Continue?') : 'You are about to apply an update. All services will be stopped, the application will close, update, and restart. Continue?'
     );
     if (!confirmed) return;
     
@@ -2925,16 +2925,11 @@ async function installUpdateNow() {
         
         if (data && data.success) {
             showToast(data.message, 'success');
-            
-            // Loop reconnection or just let it close
-            setTimeout(() => {
-                // Terminate connection error overlay to allow restart
-                const connOverlay = document.getElementById('connection-error-overlay');
-                if (connOverlay) connOverlay.classList.remove('active');
-                
-                // Show a nice modal or alert that updating has run
-                alert(t('applying_update', 'Applying update... Application will restart.'));
-            }, 1000);
+            // The application will be closed by the Electron main process; the
+            // loader stays visible until the window is torn down. No additional
+            // dialog is needed here.
+            const connOverlay = document.getElementById('connection-error-overlay');
+            if (connOverlay) connOverlay.classList.remove('active');
         } else {
             showToast(data ? data.message : 'Update failed', 'error');
             if (globalLoader) globalLoader.classList.remove('active');

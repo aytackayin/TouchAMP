@@ -479,6 +479,7 @@
   "checking_for_updates": "Güncellemeler denetleniyor...",
   "downloading_update": "Güncelleme indiriliyor...",
   "applying_update": "Güncelleme uygulanıyor... Uygulama yeniden başlatılacak.",
+  "update_confirm_msg": "Güncelleme uygulamak üzeresiniz. Tüm servisler durdurulacak, uygulama kapanıp güncellendikten sonra yeniden başlatılacak. Devam edilsin mi?",
 
   "deploy_settings": "Yükleme Ayarları",
   "deploy_to_hosting": "Hosting'e Yükle",

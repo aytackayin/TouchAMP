@@ -1,3 +1,20 @@
+# 🚀 TouchAMP v1.0.7
+
+## 🛠️ Fixes
+
+### Auto-update no longer gets stuck ("Applying update..." forever)
+A critical bug caused the update process to hang indefinitely on the "Applying update..." screen. The root cause: the update endpoint exited the forked server process, which the Electron main process interpreted as an unexpected crash and **immediately restarted** — so the app never closed and the loader stayed on screen forever.
+
+- The update endpoint now signals the Electron main process to **quit cleanly** via a new `apply-update` IPC message instead of force-exiting. The detached updater script (which already relaunches the new build) is unaffected.
+- Removed the duplicate confirmation dialog (the same message appeared twice — once as a confirm prompt, once as an alert).
+- The confirmation prompt now asks an actual question instead of showing a status sentence.
+
+## 📥 Download Instructions
+Download the `TouchAMP_v1.0.7-win32-x64.zip` file below, extract it anywhere on your Windows PC, and double click `TouchAMP.exe` to launch.
+
+---
+*Developed with ❤️ by Aytaç KAYIN.*
+
 # 🚀 TouchAMP v1.0.6
 
 ## 🛠️ Fixes

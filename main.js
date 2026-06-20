@@ -175,6 +175,14 @@ function startServer() {
                 app.relaunch();
                 app.exit(0);
             });
+        } else if (msg.type === 'apply-update') {
+            // The detached updater script is already running and will relaunch
+            // the app once files are swapped. Quit cleanly WITHOUT relaunching
+            // here and WITHOUT restarting the forked server.
+            isQuitting = true;
+            stopStatusPolling();
+            stopServer();
+            app.quit();
         }
     });
 }

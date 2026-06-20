@@ -479,6 +479,7 @@
   "checking_for_updates": "Checking for updates...",
   "downloading_update": "Downloading update...",
   "applying_update": "Applying update... Application will restart.",
+  "update_confirm_msg": "You are about to apply an update. All services will be stopped, the application will close, update, and restart. Continue?",
 
   "deploy_settings": "Deploy Settings",
   "deploy_to_hosting": "Upload to Hosting",

@@ -2727,7 +2727,17 @@ Start-Job -ScriptBlock {
                 cwd: config.BASE_DIR
             });
             child.unref();
-            process.exit(0);
+
+            // Tell the Electron main process to quit cleanly so the forked
+            // server is NOT auto-restarted (which would otherwise prevent the
+            // app from closing and leave the "applying update" screen stuck).
+            // The detached updater script relaunches the new build on its own.
+            if (process.send && typeof process.send === 'function') {
+                process.send({ type: 'apply-update' });
+            } else {
+                // Standalone server (no Electron parent) — just exit.
+                process.exit(0);
+            }
         } catch (e) {
             process.stdout.write(`  [!] Auto-update failed: ${e.message}\n`);
         }
