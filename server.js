@@ -2624,27 +2624,8 @@ app.post('/api/update/execute', async (req, res) => {
             // 3) move user data back, 4) start the new exe, 5) clean up.
             const updaterScriptPath = path.join(config.BASE_DIR, '_update_app.ps1');
             const psScript = `
-param([switch]$FromTask)
 $ProgressPreference = 'SilentlyContinue'
 $ErrorActionPreference = 'Stop'
-
-# The Electron app runs every child process inside a Windows Job Object that
-# kills them all when the app quits. Without escaping it, this updater is
-# terminated during its initial sleep and the update never completes. To
-# survive, the updater re-launches itself through Task Scheduler, which runs
-# detached from the job and at Highest privilege.
-if (-not $FromTask) {
-    $self = $PSCommandPath
-    $taskName = 'TouchAMPUpdater'
-    $arg = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $self + '" -FromTask'
-    $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arg
-    $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(5)
-    $principal = New-ScheduledTaskPrincipal -UserId "$env:USERNAME" -RunLevel Highest -LogonType Interactive
-    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null
-    Start-ScheduledTask -TaskName $taskName
-    exit
-}
-
 Start-Sleep -Seconds 3
 
 $zipPath      = '${tempZip.replace(/\\/g, '/')}'
@@ -2737,23 +2718,38 @@ Start-Job -ScriptBlock {
 `;
             fs.writeFileSync(updaterScriptPath, psScript, 'utf-8');
 
-            // Execute updater script completely detached
-            const child = spawn('powershell.exe', [
-                '-NoProfile',
-                '-ExecutionPolicy', 'Bypass',
-                '-WindowStyle', 'Hidden',
-                '-File', updaterScriptPath
-            ], {
-                detached: true,
-                stdio: 'ignore',
-                cwd: config.BASE_DIR
-            });
-            child.unref();
+            // Create the updater script, then schedule it through Task
+            // Scheduler. Crucially, this must be done SYNCHRONOUSLY before we
+            // tell the app to quit: Electron runs every child process inside a
+            // Windows Job Object that kills them all when the app exits. A
+            // detached/spawned PowerShell would be terminated before it could
+            // even register the task. By registering + starting the task inline
+            // (synchronously), the task — which runs under the Task Scheduler
+            // service, outside the Electron job — survives the app quitting and
+            // performs the actual extraction + relaunch.
+            const taskCreatorPath = path.join(config.BASE_DIR, '_create_update_task.ps1');
+            const taskCreateFinal = `$ErrorActionPreference = 'Stop'
+$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"${updaterScriptPath}\"')
+$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(8)
+$principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest -LogonType Interactive
+Register-ScheduledTask -TaskName 'TouchAMPUpdater' -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null
+Start-ScheduledTask -TaskName 'TouchAMPUpdater'
+`;
+            fs.writeFileSync(taskCreatorPath, taskCreateFinal, 'utf-8');
+            try {
+                execSync(`powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "${taskCreatorPath}"`, {
+                    cwd: config.BASE_DIR,
+                    windowsHide: true,
+                    stdio: 'ignore'
+                });
+            } finally {
+                try { fs.unlinkSync(taskCreatorPath); } catch (_) {}
+            }
 
             // Tell the Electron main process to quit cleanly so the forked
-            // server is NOT auto-restarted (which would otherwise prevent the
-            // app from closing and leave the "applying update" screen stuck).
-            // The detached updater script relaunches the new build on its own.
+            // server is NOT auto-restarted. The scheduled task (already
+            // registered and started, running outside the Electron job) will
+            // perform the extraction and relaunch the new build.
             if (process.send && typeof process.send === 'function') {
                 process.send({ type: 'apply-update' });
             } else {

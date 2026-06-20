@@ -1,3 +1,19 @@
+# 🚀 TouchAMP v1.0.9
+
+## 🛠️ Fixes
+
+### Auto-update now completes reliably (synchronous Task Scheduler registration)
+v1.0.8 tried to escape Electron's Windows Job Object by re-launching the updater through Task Scheduler, but that re-launch itself happened in a detached process that was still killed by the job before it could register the task — so the update still silently failed.
+
+- The updater task is now registered and started **synchronously** (before the app quits), so the Task Scheduler service has taken over the job before Electron tears down its job object. The scheduled task runs completely outside the Electron process tree and performs the extraction + relaunch at Highest privilege.
+- The one-shot task removes itself when the update finishes.
+
+## 📥 Download Instructions
+Download the `TouchAMP_v1.0.9-win32-x64.zip` file below, extract it anywhere on your Windows PC, and double click `TouchAMP.exe` to launch.
+
+---
+*Developed with ❤️ by Aytaç KAYIN.*
+
 # 🚀 TouchAMP v1.0.8
 
 ## 🛠️ Fixes
