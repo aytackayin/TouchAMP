@@ -86,6 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initNavigation();
     switchSection(savedSection, savedTab); // Use the saved state
     refreshStatus();
+    checkUpdateToast();
     loadProjects();
     loadQuickAccess().catch(() => {});
     startPolling();
@@ -2908,12 +2909,12 @@ async function installUpdateNow() {
         btn.disabled = true;
     }
     
-    // Show full screen global loader with custom message
+    // Show full screen global loader — starts in "downloading" phase.
     const globalLoader = document.getElementById('global-loader');
     const loaderText = globalLoader ? globalLoader.querySelector('.loader-text') : null;
     
     if (globalLoader && loaderText) {
-        loaderText.textContent = t('applying_update', 'Applying update... Application will restart.');
+        loaderText.textContent = t('update_dl_start', 'Downloading update...');
         globalLoader.classList.add('active');
     }
     
@@ -2924,12 +2925,13 @@ async function installUpdateNow() {
         });
         
         if (data && data.success) {
-            showToast(data.message, 'success');
-            // The application will be closed by the Electron main process; the
-            // loader stays visible until the window is torn down. No additional
-            // dialog is needed here.
             const connOverlay = document.getElementById('connection-error-overlay');
             if (connOverlay) connOverlay.classList.remove('active');
+            // Poll the server for download progress until it signals
+            // applying/done (at which point it quits the app). This gives the
+            // user a live "Downloading... X% / Applying..." status instead of a
+            // silent wait.
+            await pollUpdateProgress(loaderText, globalLoader);
         } else {
             showToast(data ? data.message : 'Update failed', 'error');
             if (globalLoader) globalLoader.classList.remove('active');
@@ -2944,6 +2946,42 @@ async function installUpdateNow() {
             btn.disabled = false;
         }
     }
+}
+
+async function pollUpdateProgress(loaderText, globalLoader) {
+    return new Promise((resolve) => {
+        const poll = () => {
+            apiCall('/api/update/progress', { silent: true }).then(p => {
+                if (p && p.success) {
+                    if (loaderText && p.message) loaderText.textContent = p.message;
+                    if (p.status === 'applying' || p.status === 'done') { resolve(); return; }
+                    if (p.status === 'error') {
+                        showToast(p.message, 'error');
+                        if (globalLoader) globalLoader.classList.remove('active');
+                        resolve();
+                        return;
+                    }
+                }
+                setTimeout(poll, 600);
+            }).catch(() => { setTimeout(poll, 600); });
+        };
+        poll();
+    });
+}
+
+// On launch, show a toast if the app version differs from the last one seen.
+// This confirms to the user that an update actually succeeded.
+async function checkUpdateToast() {
+    try {
+        const data = await apiCall('/api/version', { silent: true });
+        if (data && data.success && data.version) {
+            const last = localStorage.getItem('touchamp_lastVersion');
+            if (last && last !== data.version) {
+                showToast(t('updated_toast', 'TouchAMP updated to v{x}', { x: data.version }), 'success');
+            }
+            localStorage.setItem('touchamp_lastVersion', data.version);
+        }
+    } catch (e) {}
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•

@@ -1,3 +1,21 @@
+# 🚀 TouchAMP v1.0.11
+
+## ✨ Improvements
+
+### Clear update progress — no more wondering "what's happening?"
+The update used to show a single silent "Applying update..." spinner for the whole process (including a ~296 MB download), and after the app closed there was no feedback at all for ~30 s. Now:
+
+- The updater shows a **live download progress** with MB and percentage ("Downloading update... 142 / 296 MB (48%)").
+- When the download finishes, it clearly says **"Applying update... the app will close and restart in a moment."** so you know what to expect.
+- After the restart, a toast confirms **"TouchAMP updated to v1.0.11."**
+- Reduced unnecessary wait time (services-stopping and pre-extract sleeps shortened).
+
+## 📥 Download Instructions
+Download the `TouchAMP_v1.0.11-win32-x64.zip` file below, extract it anywhere on your Windows PC, and double click `TouchAMP.exe` to launch.
+
+---
+*Developed with ❤️ by Aytaç KAYIN.*
+
 # 🚀 TouchAMP v1.0.10
 
 ## 🛠️ Fixes

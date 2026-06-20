@@ -479,6 +479,11 @@
   "checking_for_updates": "Checking for updates...",
   "downloading_update": "Downloading update...",
   "applying_update": "Applying update... Application will restart.",
+  "update_dl_start": "Downloading update...",
+  "update_dl_progress": "Downloading update... {x} / {y} MB ({z}%)",
+  "update_applying": "Applying update... The app will close and restart in a moment.",
+  "update_done": "Update applied. Restarting...",
+  "updated_toast": "TouchAMP updated to v{x}.",
   "update_confirm_msg": "You are about to apply an update. All services will be stopped, the application will close, update, and restart. Continue?",
 
   "deploy_settings": "Deploy Settings",

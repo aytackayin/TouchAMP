@@ -479,6 +479,11 @@
   "checking_for_updates": "Güncellemeler denetleniyor...",
   "downloading_update": "Güncelleme indiriliyor...",
   "applying_update": "Güncelleme uygulanıyor... Uygulama yeniden başlatılacak.",
+  "update_dl_start": "Güncelleme indiriliyor...",
+  "update_dl_progress": "Güncelleme indiriliyor... {x} / {y} MB ({z}%)",
+  "update_applying": "Güncelleme uygulanıyor... Uygulama birazdan kapanıp yeniden başlayacak.",
+  "update_done": "Güncelleme uygulandı. Yeniden başlatılıyor...",
+  "updated_toast": "TouchAMP v{x} sürümüne güncellendi.",
   "update_confirm_msg": "Güncelleme uygulamak üzeresiniz. Tüm servisler durdurulacak, uygulama kapanıp güncellendikten sonra yeniden başlatılacak. Devam edilsin mi?",
 
   "deploy_settings": "Yükleme Ayarları",

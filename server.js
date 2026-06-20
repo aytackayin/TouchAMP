@@ -2594,11 +2594,22 @@ app.get('/api/update/check', async (req, res) => {
     }
 });
 
+let updateProgress = { status: 'idle', percent: 0, message: '' };
+
+app.get('/api/version', (req, res) => {
+    res.json({ success: true, version: pkg.version });
+});
+
+app.get('/api/update/progress', (req, res) => {
+    res.json({ success: true, ...updateProgress });
+});
+
 app.post('/api/update/execute', async (req, res) => {
     const { zipUrl } = req.body;
     if (!zipUrl) return res.status(400).json({ success: false, message: 'Missing zipUrl.' });
 
-    res.json({ success: true, message: 'Update started. The application will close, update, and restart shortly.' });
+    updateProgress = { status: 'downloading', percent: 0, message: t('update_dl_start', 'Downloading update...') };
+    res.json({ success: true, message: 'Update started.' });
 
     // Process update asynchronously
     setTimeout(async () => {
@@ -2614,8 +2625,15 @@ app.post('/api/update/execute', async (req, res) => {
 
             const tempZip = path.join(os.tmpdir(), 'touchamp-update.zip');
 
-            // Download update zip
-            await downloadUrlToFile(zipUrl, tempZip);
+            // Download update zip (reporting progress so the UI can show a %)
+            await downloadUrlToFile(zipUrl, tempZip, (downloadedBytes, totalBytes) => {
+                const pct = totalBytes ? Math.round((downloadedBytes / totalBytes) * 100) : 0;
+                const mb = (downloadedBytes / 1024 / 1024).toFixed(0);
+                const totalMb = totalBytes ? (totalBytes / 1024 / 1024).toFixed(0) : '?';
+                updateProgress = { status: 'downloading', percent: pct, message: t('update_dl_progress', 'Downloading update... {x} / {y} MB ({z}%)', { x: mb, y: totalMb, z: pct }) };
+            });
+
+            updateProgress = { status: 'applying', percent: 100, message: t('update_applying', 'Applying update... The app will close and restart in a moment.') };
 
             // Build the new updater script. The release ZIP contains ONLY
             // application files — user data (www, data, backups, settings.json,
@@ -2627,7 +2645,7 @@ app.post('/api/update/execute', async (req, res) => {
             const psScript = `
 $ProgressPreference = 'SilentlyContinue'
 $ErrorActionPreference = 'Stop'
-Start-Sleep -Seconds 3
+Start-Sleep -Seconds 1
 
 $zipPath    = '${tempZip.replace(/\\/g, '/')}'
 $targetPath = '${config.BASE_DIR.replace(/\\/g, '/')}'
@@ -2666,7 +2684,7 @@ Start-Job -ScriptBlock {
             const taskCreatorPath = path.join(config.BASE_DIR, '_create_update_task.ps1');
             const taskCreateFinal = `$ErrorActionPreference = 'Stop'
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"${updaterScriptPath}\"')
-$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(8)
+$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(2)
 $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest -LogonType Interactive
 Register-ScheduledTask -TaskName 'TouchAMPUpdater' -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null
 Start-ScheduledTask -TaskName 'TouchAMPUpdater'
@@ -2686,6 +2704,7 @@ Start-ScheduledTask -TaskName 'TouchAMPUpdater'
             // server is NOT auto-restarted. The scheduled task (already
             // registered and started, running outside the Electron job) will
             // perform the extraction and relaunch the new build.
+            updateProgress = { status: 'done', percent: 100, message: t('update_done', 'Update applied. Restarting...') };
             if (process.send && typeof process.send === 'function') {
                 process.send({ type: 'apply-update' });
             } else {
@@ -2693,6 +2712,7 @@ Start-ScheduledTask -TaskName 'TouchAMPUpdater'
                 process.exit(0);
             }
         } catch (e) {
+            updateProgress = { status: 'error', percent: 0, message: t('update_failed', 'Update failed: {x}', { x: e.message }) };
             process.stdout.write(`  [!] Auto-update failed: ${e.message}\n`);
         }
     }, 500);
