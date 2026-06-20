@@ -1,3 +1,19 @@
+# 🚀 TouchAMP v1.0.8
+
+## 🛠️ Fixes
+
+### Auto-update now actually restarts the app (Job Object fix)
+v1.0.7 fixed the endless "Applying update..." screen, but the app would still **close and never come back**. The detached updater PowerShell process was being killed by Electron's Windows Job Object the moment the app quit — so the download finished but the extraction never happened.
+
+- The updater now re-launches itself through **Task Scheduler**, which runs completely detached from the Electron Job Object and at Highest privilege. It survives the app quitting and correctly extracts the new build and relaunches it.
+- The one-shot scheduled task cleans itself up after the update completes.
+
+## 📥 Download Instructions
+Download the `TouchAMP_v1.0.8-win32-x64.zip` file below, extract it anywhere on your Windows PC, and double click `TouchAMP.exe` to launch.
+
+---
+*Developed with ❤️ by Aytaç KAYIN.*
+
 # 🚀 TouchAMP v1.0.7
 
 ## 🛠️ Fixes

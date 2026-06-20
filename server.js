@@ -2624,8 +2624,27 @@ app.post('/api/update/execute', async (req, res) => {
             // 3) move user data back, 4) start the new exe, 5) clean up.
             const updaterScriptPath = path.join(config.BASE_DIR, '_update_app.ps1');
             const psScript = `
+param([switch]$FromTask)
 $ProgressPreference = 'SilentlyContinue'
 $ErrorActionPreference = 'Stop'
+
+# The Electron app runs every child process inside a Windows Job Object that
+# kills them all when the app quits. Without escaping it, this updater is
+# terminated during its initial sleep and the update never completes. To
+# survive, the updater re-launches itself through Task Scheduler, which runs
+# detached from the job and at Highest privilege.
+if (-not $FromTask) {
+    $self = $PSCommandPath
+    $taskName = 'TouchAMPUpdater'
+    $arg = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $self + '" -FromTask'
+    $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arg
+    $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(5)
+    $principal = New-ScheduledTaskPrincipal -UserId "$env:USERNAME" -RunLevel Highest -LogonType Interactive
+    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null
+    Start-ScheduledTask -TaskName $taskName
+    exit
+}
+
 Start-Sleep -Seconds 3
 
 $zipPath      = '${tempZip.replace(/\\/g, '/')}'
@@ -2698,13 +2717,16 @@ catch {
     exit 1
 }
 
-# 4) Launch the new build
+# 4) Remove the one-shot scheduled task that launched this updater
+Unregister-ScheduledTask -TaskName 'TouchAMPUpdater' -Confirm:$false -ErrorAction SilentlyContinue
+
+# 5) Launch the new build
 $exePath = Join-Path $targetPath 'TouchAMP.exe'
 if (Test-Path $exePath) {
     Start-Process -FilePath $exePath -WorkingDirectory $targetPath
 }
 
-# 5) Clean up temp files (background job so the new app can start immediately)
+# 6) Clean up temp files (background job so the new app can start immediately)
 Start-Job -ScriptBlock {
     Start-Sleep -Seconds 5
     Remove-Item -Path $args[0] -Force -ErrorAction SilentlyContinue
