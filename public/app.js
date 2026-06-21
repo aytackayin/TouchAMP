@@ -1,4 +1,4 @@
-﻿// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // TouchAMP â€” Frontend Application
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
@@ -2168,6 +2168,16 @@ function initGlobalTooltips() {
             tooltipEl.classList.remove('visible');
         }
     });
+
+    // Hide tooltip on mouse click/press to prevent it from getting stuck when modals open or DOM changes
+    document.addEventListener('mousedown', () => {
+        if (tooltipEl) tooltipEl.classList.remove('visible');
+    });
+
+    // Hide tooltip when window/document loses focus
+    window.addEventListener('blur', () => {
+        if (tooltipEl) tooltipEl.classList.remove('visible');
+    });
 }
 
 function updateTooltipPosition(x, y) {
@@ -3659,8 +3669,15 @@ function closeDeployRunModal() {
 async function executeDeploy() {
     const project = document.getElementById('deploy-run-project').value;
     const fullSync = document.getElementById('deploy-full-sync').checked;
+    const skipFiles = !document.getElementById('deploy-files-sync').checked;
+    const skipDb = !document.getElementById('deploy-db-sync').checked;
 
     const btn = document.getElementById('btn-start-deploy');
+    if (skipFiles && skipDb) {
+        showToast(t('deploy_select_one_sync', 'Please select at least one item to upload.'), 'error');
+        return;
+    }
+
     setLoadingBtn(btn, true);
     document.getElementById('deploy-run-confirm').style.display = 'none';
     document.getElementById('deploy-run-progress').style.display = 'block';
@@ -3669,7 +3686,7 @@ async function executeDeploy() {
 
     const data = await apiCall('/api/deploy/start', {
         method: 'POST',
-        body: JSON.stringify({ project, fullSync })
+        body: JSON.stringify({ project, fullSync, skipFiles, skipDb })
     });
 
     if (!data || !data.success || !data.taskId) {

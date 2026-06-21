@@ -1,3 +1,24 @@
+# 🚀 TouchAMP v1.0.13
+
+## ✨ Improvements
+
+### Selective Deployment (Files / Database Sync)
+You can now selectively upload files, synchronize the database, or do both when running deployments. This allows for faster updates when you only modified code files or only need to sync database changes.
+
+### Tooltip UI Behavior
+Tooltips are now hidden on mouse click and window blur, preventing tooltips from getting stuck on screen when switching views or opening modals.
+
+## 🛠️ Fixes
+
+### phpMyAdmin SQL Export Engine Missing Fix (MySQL 9.x CHECK Constraints)
+Patched phpMyAdmin's internal SQL parser to support `CHECK` constraints (such as `CONSTRAINT ... CHECK (json_valid(...))`). Previously, phpMyAdmin would error out on the reserved `CHECK` keyword inside the `CREATE TABLE` parser, aborting the parsing process prematurely. This caused the exporter to omit table engines (`ENGINE=InnoDB`) and charsets, causing errors during import on shared hosting.
+
+## 📥 Download Instructions
+Download the `TouchAMP_v1.0.13-win32-x64.zip` file below, extract it anywhere on your Windows PC, and double click `TouchAMP.exe` to launch.
+
+---
+*Developed with ❤️ by Aytaç KAYIN.*
+
 # 🚀 TouchAMP v1.0.12
 
 ## ✨ Improvements

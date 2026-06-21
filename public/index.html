@@ -1735,6 +1735,16 @@
                 <div style="color: var(--text-secondary); margin-bottom: 16px; font-size: 14px; line-height: 1.5;">
                     <span data-i18n="deploy_confirm_desc">Only locally modified files (since last upload) will be uploaded. Override files and MySQL sync (if enabled) will also run.</span>
                 </div>
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
+                    <label class="form-checkbox" style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="deploy-files-sync" class="table-cb" checked>
+                        <span data-i18n="deploy_files_sync">Upload Files</span>
+                    </label>
+                    <label class="form-checkbox" style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="deploy-db-sync" class="table-cb" checked>
+                        <span data-i18n="deploy_db_sync">Upload Database</span>
+                    </label>
+                </div>
                 <label class="form-checkbox" style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
                     <input type="checkbox" id="deploy-full-sync" class="table-cb">
                     <span data-i18n="deploy_full_sync">Full upload (re-upload all files, ignore last upload time)</span>

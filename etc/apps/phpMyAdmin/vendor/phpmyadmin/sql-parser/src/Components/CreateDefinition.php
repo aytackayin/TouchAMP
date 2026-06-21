@@ -253,7 +253,50 @@ class CreateDefinition extends Component
                         $state = 2;
                     }
                 } elseif ($token->type === Token::TYPE_KEYWORD) {
-                    if ($token->flags & Token::FLAG_KEYWORD_RESERVED) {
+                    if ($expr->isConstraint && $token->keyword === 'CHECK') {
+                        // Handle CHECK constraints: CONSTRAINT name CHECK (expr)
+                        // Parse the parenthesized CHECK expression by counting brackets.
+                        $key = new Key(null, [], 'CHECK');
+                        $checkExpr = '';
+                        $depth = 0;
+                        for (++$list->idx; $list->idx < $list->count; ++$list->idx) {
+                            $t = $list->tokens[$list->idx];
+                            if ($t->type === Token::TYPE_WHITESPACE || $t->type === Token::TYPE_COMMENT) {
+                                if ($depth > 0) {
+                                    $checkExpr .= $t->token;
+                                }
+
+                                continue;
+                            }
+
+                            if ($t->type === Token::TYPE_OPERATOR && $t->value === '(') {
+                                $depth++;
+                                if ($depth > 1) {
+                                    $checkExpr .= $t->token;
+                                }
+
+                                continue;
+                            }
+
+                            if ($t->type === Token::TYPE_OPERATOR && $t->value === ')') {
+                                $depth--;
+                                if ($depth === 0) {
+                                    break;
+                                }
+
+                                $checkExpr .= $t->token;
+                                continue;
+                            }
+
+                            if ($depth > 0) {
+                                $checkExpr .= $t->token;
+                            }
+                        }
+
+                        $key->expr = trim($checkExpr);
+                        $expr->key = $key;
+                        $state = 4;
+                    } elseif ($token->flags & Token::FLAG_KEYWORD_RESERVED) {
                         // Reserved keywords can't be used
                         // as field names without backquotes
                         $parser->error(
@@ -264,11 +307,11 @@ class CreateDefinition extends Component
                         );
 
                         return $ret;
+                    } else {
+                        // Non-reserved keywords are allowed without backquotes
+                        $expr->name = $token->value;
+                        $state = 2;
                     }
-
-                    // Non-reserved keywords are allowed without backquotes
-                    $expr->name = $token->value;
-                    $state = 2;
                 } else {
                     $parser->error('A symbol name was expected!', $token);
 

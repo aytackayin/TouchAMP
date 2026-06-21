@@ -228,6 +228,9 @@ function walkMapping(absDir, relFromProject, relWithin, toBase, excludeSet, pair
         const nextFromProject = relFromProject ? `${relFromProject}/${e.name}` : e.name;
         const nextWithin = relWithin ? `${relWithin}/${e.name}` : e.name;
         const abs = path.join(absDir, e.name);
+        if (e.isSymbolicLink()) {
+            continue; // Always ignore symlinks/junctions during upload walk (Yöntem A)
+        }
         if (e.isDirectory()) {
             if (isExcluded(nextFromProject, excludeSet)) continue;
             walkMapping(abs, nextFromProject, nextWithin, toBase, excludeSet, pairs);
@@ -304,35 +307,105 @@ async function ftpUploadOne(client, localAbs, remotePath) {
 }
 
 async function ftpUploadPairs(F, pairs, taskId, progressKey) {
-    await withFtp(F, 60000, async (client) => {
+    let client = null;
+    let connected = false;
+
+    const ftp = getFtp();
+    if (!ftp) throw new Error('FTP library (basic-ftp) is not installed.');
+
+    const connect = async () => {
+        if (connected) return;
+        client = new ftp.Client(60000);
+        client.ftp.verbose = false;
+        await client.access({
+            host: F.host, port: F.port || 21, user: F.user,
+            password: F.password || '', secure: !!F.secure,
+            secureOptions: { rejectUnauthorized: !!F.verifyTls }
+        });
+        connected = true;
+    };
+
+    const close = async () => {
+        if (connected && client) {
+            try { await client.close(); } catch (e) {}
+        }
+        connected = false;
+        client = null;
+    };
+
+    try {
         setProgress(taskId, { phase: 'ftp_connect', message: translate('deploy_connecting', 'Connecting to FTP server...') });
+        await connect();
+
         for (let i = 0; i < pairs.length; i++) {
             if (isCancelled(taskId)) break;
             const { localAbs, remotePath } = pairs[i];
-            await ftpUploadOne(client, localAbs, remotePath);
+            
+            let attempts = 0;
+            let success = false;
+            let lastError = null;
+
+            while (attempts < 3 && !success) {
+                if (isCancelled(taskId)) break;
+                try {
+                    await connect();
+                    await ftpUploadOne(client, localAbs, remotePath);
+                    success = true;
+                } catch (err) {
+                    attempts++;
+                    lastError = err;
+                    await close();
+                    if (attempts < 3) {
+                        await new Promise(resolve => setTimeout(resolve, 1500));
+                        setProgress(taskId, { message: translate('deploy_reconnecting', 'Connection lost. Reconnecting... (Attempt {x}/3)', { x: attempts }) });
+                    }
+                }
+            }
+
+            if (!success && lastError) {
+                throw lastError;
+            }
+
             try {
                 const mtime = Math.round(fs.statSync(localAbs).mtimeMs / 1000) * 1000;
                 deployProgressMap[taskId].uploadedFiles[remotePath] = mtime;
             } catch (e) {}
+
             setProgress(taskId, {
                 progress: Math.round(((i + 1) / pairs.length) * 100),
                 message: translate('deploy_uploading_file', 'Uploading: {x} ({y}/{z})', { x: remotePath, y: i + 1, z: pairs.length })
             });
         }
-    });
+    } finally {
+        await close();
+    }
 }
 
 // ─── REMOTE MYSQL ───
 
 const DB_NAME_RE = /^[A-Za-z0-9_$]{1,64}$/;
 
+function mysqlPluginDir(config) {
+    if (!config.MYSQL_BIN) return null;
+    const binDir = path.dirname(config.MYSQL_BIN);
+    const pluginDir = path.join(binDir, '..', 'lib', 'plugin');
+    return fs.existsSync(pluginDir) ? path.resolve(pluginDir).replace(/\\/g, '/') : null;
+}
+
+function mysqlPluginArgs(config) {
+    const dir = mysqlPluginDir(config);
+    return dir ? [`--plugin-dir=${dir}`] : [];
+}
+
 function writeDefaultsFile(creds) {
     const tmp = path.join(os.tmpdir(), `ta_mysql_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.cnf`);
     const lines = ['[client]'];
-    if (creds.host) lines.push(`host=${creds.host}`);
+    lines.push('default-character-set=utf8mb4');
+    if (creds.host) lines.push(`host="${creds.host}"`);
     if (creds.port) lines.push(`port=${creds.port}`);
-    if (creds.user) lines.push(`user=${creds.user}`);
-    lines.push(`password=${creds.password || ''}`);
+    if (creds.user) lines.push(`user="${creds.user}"`);
+    const pwd = (creds.password || '').replace(/"/g, '\\"');
+    lines.push(`password="${pwd}"`);
     fs.writeFileSync(tmp, lines.join('\n'), 'utf-8');
     return tmp;
 }
@@ -437,9 +510,9 @@ function importFromFile(bin, args, inFile) {
     });
 }
 
-function mysqlQuery(bin, defaultsFile, sql) {
+function mysqlQuery(bin, defaultsFile, sql, extraArgs) {
     return new Promise((resolve, reject) => {
-        execFile(bin, ['--no-defaults', `--defaults-extra-file=${defaultsFile}`, '-N', '-B', '-e', sql],
+        execFile(bin, [`--defaults-extra-file=${defaultsFile}`, ...(extraArgs || []), '-N', '-B', '-e', sql],
             { windowsHide: true, timeout: 30000, maxBuffer: 1024 * 1024 * 16 },
             (err, stdout, stderr) => {
                 if (err) return reject(new Error(shortErr(stderr || err.message)));
@@ -472,6 +545,7 @@ async function syncRemoteMysql(cfg, config, taskId) {
         throw new Error(translate('deploy_remote_db_invalid', 'Remote database name may only contain letters, numbers, and underscore.'));
     }
 
+    const pluginArgs = mysqlPluginArgs(config);
     const localCnf = writeDefaultsFile({ host: '127.0.0.1', port: config.MYSQL_PORT, user: 'root', password: '' });
     const remoteCnf = writeDefaultsFile({ host: M.host, port: M.port || 3306, user: M.user, password: M.password || '' });
     const sqlTmp = path.join(os.tmpdir(), `ta_deploy_${Date.now()}.sql`);
@@ -479,7 +553,7 @@ async function syncRemoteMysql(cfg, config, taskId) {
 
     try {
         setProgress(taskId, { phase: 'mysql_dump', message: translate('deploy_dumping_db', 'Exporting local database ({x})...', { x: localDb }) });
-        const dumpArgs = ['--no-defaults', `--defaults-extra-file=${localCnf}`, '--no-tablespaces', '--add-drop-table'];
+        const dumpArgs = [`--defaults-extra-file=${localCnf}`, ...pluginArgs, '--no-tablespaces', '--add-drop-table'];
         if (useColStats) dumpArgs.push('--column-statistics=0');
         dumpArgs.push(localDb);
         await dumpToFile(dumpBin, dumpArgs, sqlTmp);
@@ -488,7 +562,7 @@ async function syncRemoteMysql(cfg, config, taskId) {
         }
 
         setProgress(taskId, { phase: 'mysql_check', message: translate('deploy_checking_remote', 'Verifying remote database...') });
-        const showOut = await mysqlQuery(mysqlClient, remoteCnf, `SHOW DATABASES LIKE '${remoteDb}'`);
+        const showOut = await mysqlQuery(mysqlClient, remoteCnf, `SHOW DATABASES LIKE '${remoteDb}'`, pluginArgs);
         const dbExists = showOut.split(/\r?\n/).map(s => s.trim()).includes(remoteDb);
         if (!dbExists) {
             throw new Error(translate('deploy_remote_db_missing', 'Remote database "{x}" does not exist. Create it on the hosting first or check the name.', { x: remoteDb }));
@@ -500,7 +574,7 @@ async function syncRemoteMysql(cfg, config, taskId) {
             const backupDir = path.join(config.BACKUP_DIR, 'deploy');
             if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
             backupFile = path.join(backupDir, `${sanitizeName(remoteDb)}_${tsStamp()}.sql`);
-            const bkpArgs = ['--no-defaults', `--defaults-extra-file=${remoteCnf}`, '--no-tablespaces', '--add-drop-table'];
+            const bkpArgs = [`--defaults-extra-file=${remoteCnf}`, ...pluginArgs, '--no-tablespaces', '--add-drop-table'];
             if (useColStats) bkpArgs.push('--column-statistics=0');
             bkpArgs.push(remoteDb);
             await dumpToFile(dumpBin, bkpArgs, backupFile);
@@ -510,7 +584,7 @@ async function syncRemoteMysql(cfg, config, taskId) {
         }
 
         setProgress(taskId, { phase: 'mysql_import', message: translate('deploy_importing_db', 'Importing into remote database ({x})...', { x: remoteDb }) });
-        await importFromFile(mysqlClient, ['--no-defaults', `--defaults-extra-file=${remoteCnf}`, remoteDb], sqlTmp);
+        await importFromFile(mysqlClient, [`--defaults-extra-file=${remoteCnf}`, ...pluginArgs, remoteDb], sqlTmp);
     } finally {
         cleanupFile(localCnf);
         cleanupFile(remoteCnf);
@@ -530,68 +604,87 @@ function translate(key, def, replacements = {}) { return _t(key, def, replacemen
 
 // ─── MAIN DEPLOY ORCHESTRATION ───
 
-async function runDeploy(taskId, projectPath, projectCfg, config, fullSync) {
+async function runDeploy(taskId, projectPath, projectCfg, config, fullSync, skipFiles, skipDb) {
     try {
         const excludeSet = buildExcludeSet(projectCfg.exclude);
 
-        // Resolve all mappings to concrete file pairs
-        let allPairs = [];
-        for (const m of (projectCfg.mappings || [])) {
-            if (!isValidMapping(m)) continue;
-            allPairs = allPairs.concat(resolveMappingFiles(projectPath, m, excludeSet));
-        }
-        // Deduplicate by remotePath
-        const seen = new Set();
-        const uniquePairs = [];
-        for (const p of allPairs) {
-            if (seen.has(p.remotePath)) continue;
-            seen.add(p.remotePath);
-            uniquePairs.push(p);
-        }
+        let toUpload = [];
+        if (!skipFiles) {
+            // Resolve all mappings to concrete file pairs
+            let allPairs = [];
+            for (const m of (projectCfg.mappings || [])) {
+                if (!isValidMapping(m)) continue;
+                allPairs = allPairs.concat(resolveMappingFiles(projectPath, m, excludeSet));
+            }
+            // Deduplicate by remotePath
+            const seen = new Set();
+            const uniquePairs = [];
+            for (const p of allPairs) {
+                if (seen.has(p.remotePath)) continue;
+                seen.add(p.remotePath);
+                uniquePairs.push(p);
+            }
 
-        // Change detection: git diff if available, else mtime
-        let toUpload = uniquePairs;
-        if (!fullSync) {
-            let changedSet = null;
-            if (!projectCfg.__forceMtime) {
-                changedSet = getGitChangedFiles(projectPath);
-            }
-            if (changedSet) {
-                // .git available. Build set of all currently-existing files (recursively)
-                // and intersect with mapping pairs. If a file is in git's changed list, upload.
-                // We must also expand dirs in changedSet.
-                const expanded = expandChangedToFiles(projectPath, changedSet);
-                toUpload = uniquePairs.filter(p => {
-                    // p.localAbs is the project file. Its rel path from project root:
-                    const rel = path.relative(projectPath, p.localAbs).split(path.sep).filter(Boolean).join('/');
-                    // If the mapping's `from` is itself a path under project (e.g. settings/files/.env),
-                    // it's also covered by git status.
-                    return expanded.has(rel);
-                });
-            } else {
-                // mtime fallback
-                const uploaded = projectCfg.uploadedFiles || {};
-                const statP = fs.promises.stat;
-                const filtered = [];
-                for (let i = 0; i < uniquePairs.length; i++) {
-                    if (isCancelled(taskId)) break;
-                    const p = uniquePairs[i];
-                    try {
-                        const st = await statP(p.localAbs);
-                        const mtime = Math.round(st.mtimeMs / 1000) * 1000;
-                        const stored = uploaded[p.remotePath];
-                        if (stored === undefined || mtime > stored) filtered.push(p);
-                    } catch (e) { filtered.push(p); }
-                    if (i % 200 === 0) await new Promise(r => setImmediate(r));
+            // Change detection: git diff if available, else mtime
+            toUpload = uniquePairs;
+            if (!fullSync) {
+                let changedSet = null;
+                if (!projectCfg.__forceMtime) {
+                    changedSet = getGitChangedFiles(projectPath);
                 }
-                toUpload = filtered;
+                if (changedSet) {
+                    const expanded = expandChangedToFiles(projectPath, changedSet);
+                    const uploaded = projectCfg.uploadedFiles || {};
+                    const statP = fs.promises.stat;
+                    const filtered = [];
+                    for (let i = 0; i < uniquePairs.length; i++) {
+                        if (isCancelled(taskId)) break;
+                        const p = uniquePairs[i];
+                        const rel = path.relative(projectPath, p.localAbs).split(path.sep).filter(Boolean).join('/');
+                        if (expanded.has(rel)) {
+                            filtered.push(p);
+                            continue;
+                        }
+                        const stored = uploaded[p.remotePath];
+                        if (stored === undefined) {
+                            filtered.push(p);
+                            continue;
+                        }
+                        try {
+                            const st = await statP(p.localAbs);
+                            const mtime = Math.round(st.mtimeMs / 1000) * 1000;
+                            if (mtime > stored) filtered.push(p);
+                        } catch (e) { filtered.push(p); }
+                        if (i % 200 === 0) await new Promise(r => setImmediate(r));
+                    }
+                    toUpload = filtered;
+                } else {
+                    // mtime fallback
+                    const uploaded = projectCfg.uploadedFiles || {};
+                    const statP = fs.promises.stat;
+                    const filtered = [];
+                    for (let i = 0; i < uniquePairs.length; i++) {
+                        if (isCancelled(taskId)) break;
+                        const p = uniquePairs[i];
+                        try {
+                            const st = await statP(p.localAbs);
+                            const mtime = Math.round(st.mtimeMs / 1000) * 1000;
+                            const stored = uploaded[p.remotePath];
+                            if (stored === undefined || mtime > stored) filtered.push(p);
+                        } catch (e) { filtered.push(p); }
+                        if (i % 200 === 0) await new Promise(r => setImmediate(r));
+                    }
+                    toUpload = filtered;
+                }
+            } else {
+                projectCfg.uploadedFiles = {};
             }
-        } else {
-            projectCfg.uploadedFiles = {};
         }
         if (isCancelled(taskId)) return finishCancelled(taskId, projectPath, projectCfg);
 
-        if (toUpload.length === 0) {
+        if (skipFiles) {
+            setProgress(taskId, { message: translate('deploy_files_skipped', 'File upload skipped by user.') });
+        } else if (toUpload.length === 0) {
             setProgress(taskId, { message: translate('deploy_no_changes', 'No changed files to upload.') });
         } else {
             setProgress(taskId, { phase: 'ftp_upload', progress: 1, message: translate('deploy_uploading', 'Uploading {x} file(s) to hosting...', { x: toUpload.length }) });
@@ -599,9 +692,11 @@ async function runDeploy(taskId, projectPath, projectCfg, config, fullSync) {
         }
         if (isCancelled(taskId)) return finishCancelled(taskId, projectPath, projectCfg);
 
-        if (projectCfg.mysql && projectCfg.mysql.enabled) {
+        if (projectCfg.mysql && projectCfg.mysql.enabled && !skipDb) {
             setProgress(taskId, { phase: 'mysql', progress: 99, message: translate('deploy_mysql_start', 'Synchronizing remote database...') });
             await syncRemoteMysql(projectCfg, config, taskId);
+        } else if (skipDb) {
+            setProgress(taskId, { message: translate('deploy_mysql_skipped', 'Database sync skipped by user.') });
         }
 
         projectCfg.lastUpload = new Date().toISOString();
@@ -682,7 +777,8 @@ function registerRoutes(app, config, t) {
         if (!mysqlClient || !fs.existsSync(mysqlClient)) return res.json({ success: false, message: translate('mysql_bin_missing', 'MySQL client binaries not found. Install a MySQL version in TouchAMP first.') });
         if (!M.host || !M.user) return res.json({ success: false, message: t('deploy_mysql_required', 'Host and user are required.') });
         const cnf = writeDefaultsFile({ host: M.host, port: M.port || 3306, user: M.user, password: M.password || '' });
-        execFile(mysqlClient, ['--no-defaults', `--defaults-extra-file=${cnf}`, '-e', 'SELECT 1;'], { windowsHide: true, timeout: 20000 }, (err, stdout, stderr) => {
+        const pArgs = mysqlPluginArgs(config);
+        execFile(mysqlClient, [`--defaults-extra-file=${cnf}`, ...pArgs, '-e', 'SELECT 1;'], { windowsHide: true, timeout: 20000 }, (err, stdout, stderr) => {
             cleanupFile(cnf);
             if (err) return res.json({ success: false, message: translate('deploy_mysql_fail', 'MySQL connection failed: {x}', { x: shortErr(stderr || err.message) }) });
             res.json({ success: true, message: t('deploy_mysql_ok', 'MySQL connection successful.') });
@@ -690,16 +786,19 @@ function registerRoutes(app, config, t) {
     });
 
     app.post('/api/deploy/start', (req, res) => {
-        const { project, fullSync, forceMtime } = req.body;
+        const { project, fullSync, forceMtime, skipFiles, skipDb } = req.body;
+        if (skipFiles && skipDb) {
+            return res.json({ success: false, message: t('deploy_select_one_sync', 'Please select at least one item to upload.') });
+        }
         if (!safeProject(project)) return res.json({ success: false, message: t('invalid_project_name', 'Invalid project name.') });
         const projectPath = projectPathFrom(project);
         if (!fs.existsSync(projectPath)) return res.json({ success: false, message: t('project_not_found', 'Project folder not found.') });
         const cfg = loadConfig(projectPath);
         if (!cfg.ftp.host || !cfg.ftp.user) return res.json({ success: false, message: t('deploy_no_ftp', 'FTP settings are missing. Configure them first.') });
-        if (cfg.mysql && cfg.mysql.enabled && !DB_NAME_RE.test((cfg.mysql.remoteDb || '').trim())) {
+        if (cfg.mysql && cfg.mysql.enabled && !skipDb && !DB_NAME_RE.test((cfg.mysql.remoteDb || '').trim())) {
             return res.json({ success: false, message: t('deploy_remote_db_invalid', 'Remote database name may only contain letters, numbers, and underscore.') });
         }
-        if (Array.isArray(cfg.mappings) && cfg.mappings.length === 0) {
+        if (!skipFiles && Array.isArray(cfg.mappings) && cfg.mappings.length === 0) {
             return res.json({ success: false, message: t('deploy_no_mappings', 'No mapping rules defined. Add at least one rule.') });
         }
         cfg.__forceMtime = !!forceMtime;
@@ -710,7 +809,7 @@ function registerRoutes(app, config, t) {
             uploadedFiles: cfg.uploadedFiles
         };
         res.json({ success: true, taskId, message: t('deploy_started', 'Deployment started.') });
-        runDeploy(taskId, projectPath, cfg, config, !!fullSync);
+        runDeploy(taskId, projectPath, cfg, config, !!fullSync, !!skipFiles, !!skipDb);
     });
 
     app.post('/api/deploy/cancel/:taskId', (req, res) => {
