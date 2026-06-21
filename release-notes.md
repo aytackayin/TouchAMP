@@ -1,3 +1,30 @@
+# 🚀 TouchAMP v1.0.14
+
+## ✨ Improvements
+
+### Shared-hosting-friendly SQL exports
+Database/table **Export** and **Backup** now generate SQL files that import cleanly on shared hosting. Dumps are produced with `--no-tablespaces --set-gtid-purged=OFF` and statements that require `SUPER` / `BINLOG ADMIN` privileges (`SET @@SESSION.SQL_LOG_BIN`, `SET @@GLOBAL.GTID_PURGED`, transaction wrappers) are stripped out automatically. No more `#1227 - Access denied` errors when importing the file into a hosting database.
+
+### Auto-prune deploy database backups
+Each deployment takes a safety snapshot of the remote database into `backups/deploy`. To stop this folder from growing forever, only the **latest 2 backups per database** are now kept — older snapshots are removed automatically after every deploy.
+
+### Modern database collation list
+The **Create Database** dialog now includes `utf8mb4_0900_ai_ci` (the MySQL 8+/9.x default), and `utf8mb4_unicode_ci` is the new **recommended & default** collation.
+
+### Deployment settings UX
+Button colors polished, and the deployment settings panel can now be activated/toggled directly from the UI.
+
+## 🛠️ Fixes
+
+### Reliable remote database backup
+The pre-deploy remote backup now runs with `--single-transaction --skip-lock-tables --set-gtid-purged=OFF`, so it succeeds against restricted shared-hosting database users where it previously failed silently.
+
+## 📥 Download Instructions
+Download the `TouchAMP_v1.0.14-win32-x64.zip` file below, extract it anywhere on your Windows PC, and double click `TouchAMP.exe` to launch.
+
+---
+*Developed with ❤️ by Aytaç KAYIN.*
+
 # 🚀 TouchAMP v1.0.13
 
 ## ✨ Improvements

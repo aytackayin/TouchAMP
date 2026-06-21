@@ -530,6 +530,27 @@ function tsStamp() {
     return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 }
 
+function pruneDeployBackups(backupDir, keepPerDb = 2) {
+    try {
+        if (!fs.existsSync(backupDir)) return;
+        const files = fs.readdirSync(backupDir).filter(f => f.toLowerCase().endsWith('.sql'));
+        const groups = new Map();
+        for (const file of files) {
+            const m = file.match(/^(.+)_(\d{8})_(\d{6})\.sql$/i);
+            const key = m ? m[1] : file;
+            const sortKey = m ? (m[2] + m[3]) : '';
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push({ file, sortKey });
+        }
+        for (const items of groups.values()) {
+            items.sort((a, b) => (a.sortKey < b.sortKey ? 1 : a.sortKey > b.sortKey ? -1 : 0));
+            items.slice(keepPerDb).forEach(({ file }) => {
+                try { fs.unlinkSync(path.join(backupDir, file)); } catch (e) {}
+            });
+        }
+    } catch (e) {}
+}
+
 async function syncRemoteMysql(cfg, config, taskId) {
     const dumpBin = mysqlBinPath(config, 'mysqldump.exe');
     const mysqlClient = mysqlBinPath(config, 'mysql.exe');
@@ -569,15 +590,18 @@ async function syncRemoteMysql(cfg, config, taskId) {
         }
 
         let backupFile = null;
+        const backupDir = path.join(config.BACKUP_DIR, 'deploy');
         try {
             setProgress(taskId, { phase: 'mysql_backup', message: translate('deploy_backing_up_remote', 'Backing up remote database...') });
-            const backupDir = path.join(config.BACKUP_DIR, 'deploy');
             if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
             backupFile = path.join(backupDir, `${sanitizeName(remoteDb)}_${tsStamp()}.sql`);
-            const bkpArgs = [`--defaults-extra-file=${remoteCnf}`, ...pluginArgs, '--no-tablespaces', '--add-drop-table'];
+            const bkpArgs = [`--defaults-extra-file=${remoteCnf}`, ...pluginArgs,
+                             '--no-tablespaces', '--single-transaction', '--skip-lock-tables',
+                             '--set-gtid-purged=OFF', '--add-drop-table'];
             if (useColStats) bkpArgs.push('--column-statistics=0');
             bkpArgs.push(remoteDb);
             await dumpToFile(dumpBin, bkpArgs, backupFile);
+            pruneDeployBackups(backupDir);
         } catch (be) {
             setProgress(taskId, { phase: 'mysql_backup', message: translate('deploy_backup_skipped', 'Remote backup skipped: {x}', { x: shortErr(be.message) }) });
             if (backupFile) cleanupFile(backupFile);
