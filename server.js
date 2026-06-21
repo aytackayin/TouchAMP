@@ -1674,7 +1674,7 @@ app.post('/api/mysql/db-tables', (req, res) => {
 
 app.post('/api/mysql/create-db', (req, res) => {
     const { name, collation } = req.body;
-    const col = collation || 'utf8mb4_general_ci';
+    const col = collation || 'utf8mb4_unicode_ci';
     const mysqlClient = path.join(path.dirname(config.MYSQL_BIN), 'mysql.exe');
     execFile(mysqlClient, ['-uroot', `--port=${config.MYSQL_PORT}`, '-e', `CREATE DATABASE IF NOT EXISTS \`${name}\` COLLATE \`${col}\`;`], (err) => {
         if (err) return res.json({ success: false, message: t('create_err', 'Unable to create: ') + err.message });
