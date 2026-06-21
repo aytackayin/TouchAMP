@@ -646,19 +646,19 @@ async function loadProjects() {
             </div>
             
             <div class="vhost-actions">
-                <button type="button" class="btn btn-secondary btn-sm" title="${t('deploy_settings', 'Deploy Settings')}" data-i18n-attr="title|deploy_settings" style="border-color: rgba(99, 102, 241, 0.3); color: var(--accent-blue-light); padding: 6px 10px;" data-project="${escapeAttr(proj.name)}" onclick="openDeploySettingsModalFromData(this)">
+                <button type="button" class="btn btn-secondary btn-sm" title="${t('deploy_settings', 'Deploy Settings')}" data-i18n-attr="title|deploy_settings" style="border-color: rgba(107, 114, 128, 0.3); color: var(--text-muted); padding: 6px 10px;" data-project="${escapeAttr(proj.name)}" onclick="openDeploySettingsModalFromData(this)">
                     <i data-lucide="settings" style="width: 14px; height: 14px;"></i>
                 </button>
                 <button type="button" class="btn btn-secondary btn-sm" title="${t('deploy_to_hosting', 'Upload to Hosting')}" data-i18n-attr="title|deploy_to_hosting" style="border-color: rgba(16, 185, 129, 0.3); color: var(--accent-emerald); padding: 6px 10px;" data-project="${escapeAttr(proj.name)}" onclick="openDeployConfirmModalFromData(this)">
                     <i data-lucide="cloud-upload" style="width: 14px; height: 14px;"></i>
                 </button>
-                <button type="button" class="btn btn-secondary btn-sm" title="${t('open_folder', 'Open Folder')}" data-i18n-attr="title|open_folder" style="border-color: rgba(59, 130, 246, 0.3); color: var(--accent-blue-light); padding: 6px 10px;" onclick="openProjectFolder('${proj.name}')">
+                <button type="button" class="btn btn-secondary btn-sm" title="${t('open_folder', 'Open Folder')}" data-i18n-attr="title|open_folder" style="border-color: rgba(245, 158, 11, 0.3); color: var(--accent-amber); padding: 6px 10px;" onclick="openProjectFolder('${proj.name}')">
                     <i data-lucide="folder-open" style="width: 14px; height: 14px;"></i>
                 </button>
-                <button type="button" class="btn btn-secondary btn-sm" title="${t('rename_proj', 'Rename Project')}" data-i18n-attr="title|rename_proj" style="border-color: rgba(139, 92, 246, 0.3); color: var(--accent-emerald); padding: 6px 10px;" onclick="openRenameModal('${proj.name}')">
+                <button type="button" class="btn btn-secondary btn-sm" title="${t('rename_proj', 'Rename Project')}" data-i18n-attr="title|rename_proj" style="border-color: rgba(249, 250, 251, 0.3); color: var(--text-primary); padding: 6px 10px;" onclick="openRenameModal('${proj.name}')">
                     <i data-lucide="text-cursor-input" style="width: 14px; height: 14px;"></i>
                 </button>
-                <button type="button" class="btn btn-secondary btn-sm" title="${t('open_http', 'Open HTTP Site')}" data-i18n-attr="title|open_http" style="padding: 6px 10px; display: ${isApacheRunning ? 'inline-flex' : 'none'};" onclick="openProjectUrl('${getDynamicUrl('http', proj.hostname)}')">
+                <button type="button" class="btn btn-secondary btn-sm" title="${t('open_http', 'Open HTTP Site')}" data-i18n-attr="title|open_http" style="border-color: rgba(59, 130, 246, 0.3); color: var(--accent-blue-light); padding: 6px 10px; display: ${isApacheRunning ? 'inline-flex' : 'none'};" onclick="openProjectUrl('${getDynamicUrl('http', proj.hostname)}')">
                     <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
                 </button>
                 <button type="button" class="btn btn-secondary btn-sm" title="${t('open_https', 'Open HTTPS (SSL) Site')}" data-i18n-attr="title|open_https" style="border-color: rgba(16, 185, 129, 0.3); color: var(--accent-emerald); padding: 6px 10px; display: ${isApacheRunning ? 'inline-flex' : 'none'};" onclick="openProjectUrl('${getDynamicUrl('https', proj.hostname)}')">
@@ -3156,8 +3156,13 @@ function renderMappings() {
         const icon = isFolder ? 'folder' : 'file';
         const from = escapeAttr(m.from || '');
         const to = escapeAttr(m.to || '');
+        const enabled = m.enabled !== false;
         return `
-        <div class="deploy-mapping-row" data-idx="${i}" style="display:flex; align-items:center; gap:8px; padding: 10px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px;">
+        <div class="deploy-mapping-row ${enabled ? '' : 'disabled'}" data-idx="${i}" style="display:flex; align-items:center; gap:8px; padding: 10px 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px;">
+            <label class="toggle-switch" title="${t('deploy_mapping_toggle', 'Enable / disable this rule')}">
+                <input type="checkbox" ${enabled ? 'checked' : ''} onchange="toggleMappingEnabled(${i}, this.checked)">
+                <span class="toggle-slider"></span>
+            </label>
             <div style="display:flex; flex-direction:column; gap:2px;">
                 <button type="button" class="btn btn-secondary btn-sm" style="padding:2px 6px; line-height:1;" onclick="moveMapping(${i}, -1)" ${i === 0 ? 'disabled' : ''} title="${t('deploy_move_up', 'Move up')}"><i data-lucide="chevron-up" style="width:12px;height:12px;"></i></button>
                 <button type="button" class="btn btn-secondary btn-sm" style="padding:2px 6px; line-height:1;" onclick="moveMapping(${i}, 1)" ${i === mappings.length - 1 ? 'disabled' : ''} title="${t('deploy_move_down', 'Move down')}"><i data-lucide="chevron-down" style="width:12px;height:12px;"></i></button>
@@ -3183,7 +3188,7 @@ function addMapping(from, type) {
         return;
     }
     const defaultTo = type === 'folder' ? suggestDefaultFolderTarget(from) : suggestDefaultFileTarget(from);
-    deployState.config.mappings.push({ from, to: defaultTo, type });
+    deployState.config.mappings.push({ from, to: defaultTo, type, enabled: true });
     renderMappings();
 }
 
@@ -3220,6 +3225,13 @@ function updateMappingFrom(i, value) {
 function updateMappingTo(i, value) {
     if (!deployState.config || !deployState.config.mappings) return;
     deployState.config.mappings[i].to = String(value || '').trim();
+}
+
+function toggleMappingEnabled(i, checked) {
+    if (!deployState.config || !deployState.config.mappings) return;
+    if (!deployState.config.mappings[i]) return;
+    deployState.config.mappings[i].enabled = !!checked;
+    renderMappings();
 }
 
 function addMappingFromInput() {
@@ -3376,7 +3388,7 @@ function confirmMappingFromPicker() {
         showToast(t('deploy_rule_exists', 'This rule already exists.'), 'info');
         return;
     }
-    deployState.config.mappings.push({ from: path, to, type });
+    deployState.config.mappings.push({ from: path, to, type, enabled: true });
     renderMappings();
     closeMappingSourcePicker();
 }
@@ -3640,7 +3652,11 @@ async function openDeployConfirmModal(project) {
     const F = data.config.ftp || {};
     if (!F.host || !F.user) warnings.push(`<div style="color: var(--accent-rose); font-size: 13px; margin-bottom: 8px;"><i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>${t('deploy_no_ftp_warn', 'FTP is not configured. Open Deploy Settings first.')}</div>`);
     const mappings = data.config.mappings || [];
-    if (mappings.length === 0) warnings.push(`<div style="color: var(--accent-rose); font-size: 13px; margin-bottom: 8px;"><i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>${t('deploy_no_mappings_warn', 'No mapping rules defined. Add at least one rule.')}</div>`);
+    const enabledMappings = mappings.filter(m => m.enabled !== false);
+    if (enabledMappings.length === 0) {
+        const warnKey = mappings.length === 0 ? 'deploy_no_mappings_warn' : 'deploy_no_enabled_mappings_warn';
+        warnings.push(`<div style="color: var(--accent-rose); font-size: 13px; margin-bottom: 8px;"><i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>${t(warnKey, 'No enabled mapping rules. Enable at least one rule.')}</div>`);
+    }
     const warnBox = document.getElementById('deploy-run-warnings');
     warnBox.innerHTML = warnings.join('');
     warnBox.style.display = warnings.length ? 'block' : 'none';

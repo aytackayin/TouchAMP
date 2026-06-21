@@ -31,7 +31,7 @@ function deployConfigPath(projectPath) {
 
 function defaultConfig() {
     return {
-        mappings: [],   // [{ from: 'app', to: 'noykozmetik', type: 'folder'|'file' }, ...]
+        mappings: [],   // [{ from: 'app', to: 'noykozmetik', type: 'folder'|'file', enabled: true }, ...]
         exclude: [],    // relative paths
         ftp: {
             host: '', port: 21, user: '', password: '',
@@ -60,7 +60,7 @@ function loadConfig(projectPath) {
         const data = JSON.parse(fs.readFileSync(cfgPath, 'utf-8'));
         const base = defaultConfig();
         return {
-            mappings: Array.isArray(data.mappings) ? data.mappings.filter(isValidMapping) : base.mappings,
+            mappings: Array.isArray(data.mappings) ? data.mappings.filter(isValidMapping).map(m => ({ ...m, enabled: m.enabled !== false })) : base.mappings,
             exclude: Array.isArray(data.exclude) ? data.exclude : base.exclude,
             ftp: Object.assign(base.ftp, data.ftp || {}),
             mysql: Object.assign(base.mysql, data.mysql || {}),
@@ -614,6 +614,7 @@ async function runDeploy(taskId, projectPath, projectCfg, config, fullSync, skip
             let allPairs = [];
             for (const m of (projectCfg.mappings || [])) {
                 if (!isValidMapping(m)) continue;
+                if (m.enabled === false) continue;
                 allPairs = allPairs.concat(resolveMappingFiles(projectPath, m, excludeSet));
             }
             // Deduplicate by remotePath
@@ -798,7 +799,8 @@ function registerRoutes(app, config, t) {
         if (cfg.mysql && cfg.mysql.enabled && !skipDb && !DB_NAME_RE.test((cfg.mysql.remoteDb || '').trim())) {
             return res.json({ success: false, message: t('deploy_remote_db_invalid', 'Remote database name may only contain letters, numbers, and underscore.') });
         }
-        if (!skipFiles && Array.isArray(cfg.mappings) && cfg.mappings.length === 0) {
+        const enabledMappings = (Array.isArray(cfg.mappings) ? cfg.mappings : []).filter(m => m.enabled !== false);
+        if (!skipFiles && enabledMappings.length === 0) {
             return res.json({ success: false, message: t('deploy_no_mappings', 'No mapping rules defined. Add at least one rule.') });
         }
         cfg.__forceMtime = !!forceMtime;

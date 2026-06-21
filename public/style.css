@@ -2978,6 +2978,10 @@ body.sidebar-open {
     background: rgba(255, 255, 255, 0.05) !important;
 }
 
+.deploy-mapping-row.disabled {
+    opacity: 0.5;
+}
+
 .deploy-mapping-row .btn[disabled] {
     opacity: 0.4;
     cursor: not-allowed;
