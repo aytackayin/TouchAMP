@@ -21,6 +21,8 @@ async function build() {
         /^\/\.git(\/.*)?$/,
         /^\/\.gitignore$/,
         /^\/\.vscode(\/.*)?$/,
+        /^\/\.kilo(\/.*)?$/,
+        /^\/\.agent(\/.*)?$/,
         /^\/README\.md$/,
         /^\/BENIOKU\.md$/,
         /^\/package-lock\.json$/,
