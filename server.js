@@ -1723,12 +1723,14 @@ app.get('/api/mysql/export', (req, res) => {
     const localName = `${table || db}_export_${Date.now()}.sql`; // Keep unique for temp storage
     const outFile = path.join(process.env.TEMP, localName);
     
-    const args = ['--no-defaults', '-uroot', `--port=${config.MYSQL_PORT}`, db];
+    const args = ['--no-defaults', '-uroot', `--port=${config.MYSQL_PORT}`,
+                  '--no-tablespaces', '--set-gtid-purged=OFF', '--add-drop-table', db];
     if (table) args.push(table);
     
     execFile(dumpBin, args, { maxBuffer: 1024 * 1024 * 50 }, (err, stdout) => {
         if (err) return res.status(500).send('Export error: ' + err.message);
-        fs.writeFileSync(outFile, stdout);
+        const cleaned = stripMysqlDumpNoise(stdout);
+        fs.writeFileSync(outFile, cleaned);
         res.download(outFile, downloadName, err => {
             try { fs.unlinkSync(outFile); } catch(e){}
         });
@@ -1782,7 +1784,8 @@ app.post('/api/backup', (req, res) => {
 
                 try {
                     // Direct execSync with stdout capture — no cmd.exe wrapping
-                    const args = ['--no-defaults', '-uroot', `--port=${config.MYSQL_PORT}`, dbName];
+                    const args = ['--no-defaults', '-uroot', `--port=${config.MYSQL_PORT}`,
+                                  '--no-tablespaces', '--set-gtid-purged=OFF', '--add-drop-table', dbName];
                     if (tableName) args.push(tableName);
 
                     const dumpOutput = execSync(`"${dumpBin}" ${args.join(' ')}`, {
